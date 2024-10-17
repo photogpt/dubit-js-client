@@ -1,7 +1,3 @@
-// const appId = "442969e38bbb4ddf80bf566273325d3c"; 
-// const token = "007eJxTYLgo0Me/ZX/q+T5Wa4naCWYruG/Zsf9Zc7h6af5unXpJHRkFBhMTI0szy1Rji6SkJJOUlDQLg6Q0UzMzI3NjYyPTFONklxzB9IZARoYzLwRYGRkgEMRnZUgpTcosYWAAAMtMHXM="; // Replace with your token
-// const channelName = "dubit";
-
 import useBotAudioHandling from './useBotAudioHandling.ts'
 import {useBotHandlerSend} from './useBotHandlerSend.ts'
 
@@ -26,6 +22,7 @@ export const Basics = () => {
   const [channel, setChannel] = useState(""); 
   const [token, setToken] = useState("");
 
+  
   useJoin({appid: appId, channel: channel, token: token ? token : null}, calling);
   //local user
   const [micOn, setMic] = useState(true);
