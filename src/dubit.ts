@@ -16,7 +16,7 @@ export type DubitTranslationParams = {
 };
 
 export default class Dubit {
-  private API_URL: string;
+  private apiUrl: string;
   private useMic: boolean;
   private inputTrack: MediaStreamTrack | null;
   private token: string;
@@ -37,7 +37,7 @@ export default class Dubit {
     toLanguage,
     voiceType = "female",
   }: DubitTranslationParams) {
-    this.API_URL = apiUrl;
+    this.apiUrl = apiUrl;
     this.useMic = useMic;
     this.inputTrack = inputTrack;
     this.token = token;
@@ -54,7 +54,9 @@ export default class Dubit {
 
   private async init(): Promise<void> {
     try {
-      this.callObject = Daily.createCallObject();
+      this.callObject = Daily.createCallObject({
+        allowMultipleCallInstances: true,
+      });
       this.validateConfig();
 
       const roomUrl = await this.getDailyRoomUrl(this.token);
@@ -132,7 +134,7 @@ export default class Dubit {
 
   private async getDailyRoomUrl(token: string): Promise<string | null> {
     try {
-      const response = await fetch(`${this.API_URL}/meeting/new-meeting`, {
+      const response = await fetch(`${this.apiUrl}/meeting/new-meeting`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -160,7 +162,7 @@ export default class Dubit {
     voiceType: string,
   ): Promise<void> {
     try {
-      await fetch(`${this.API_URL}/meeting/bot/join`, {
+      await fetch(`${this.apiUrl}/meeting/bot/join`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -181,7 +183,7 @@ export default class Dubit {
 
   private async registerParticipant(participantId: string): Promise<void> {
     try {
-      await fetch(`${this.API_URL}/participant`, {
+      await fetch(`${this.apiUrl}/participant`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

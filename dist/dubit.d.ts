@@ -8,7 +8,7 @@ export type DubitTranslationParams = {
     voiceType: string;
 };
 export default class Dubit {
-    private API_URL;
+    private apiUrl;
     private useMic;
     private inputTrack;
     private token;

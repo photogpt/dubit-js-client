@@ -15,7 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const daily_js_1 = __importDefault(require("@daily-co/daily-js"));
 class Dubit {
     constructor({ apiUrl = "https://agents.dubit.live", useMic = true, inputTrack = null, token, fromLanguage, toLanguage, voiceType = "female", }) {
-        this.API_URL = apiUrl;
+        this.apiUrl = apiUrl;
         this.useMic = useMic;
         this.inputTrack = inputTrack;
         this.token = token;
@@ -30,7 +30,9 @@ class Dubit {
     init() {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                this.callObject = daily_js_1.default.createCallObject();
+                this.callObject = daily_js_1.default.createCallObject({
+                    allowMultipleCallInstances: true,
+                });
                 this.validateConfig();
                 const roomUrl = yield this.getDailyRoomUrl(this.token);
                 if (!roomUrl) {
@@ -93,7 +95,7 @@ class Dubit {
     getDailyRoomUrl(token) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const response = yield fetch(`${this.API_URL}/meeting/new-meeting`, {
+                const response = yield fetch(`${this.apiUrl}/meeting/new-meeting`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -115,7 +117,7 @@ class Dubit {
     addTranslationBot(roomUrl, participantId, fromLanguage, toLanguage, voiceType) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                yield fetch(`${this.API_URL}/meeting/bot/join`, {
+                yield fetch(`${this.apiUrl}/meeting/bot/join`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -138,7 +140,7 @@ class Dubit {
     registerParticipant(participantId) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                yield fetch(`${this.API_URL}/participant`, {
+                yield fetch(`${this.apiUrl}/participant`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
