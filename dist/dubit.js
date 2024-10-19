@@ -14,7 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const daily_js_1 = __importDefault(require("@daily-co/daily-js"));
 class Dubit {
-    constructor({ apiUrl = "https://agents.dubit.live", useMic = true, inputTrack = null, token, fromLanguage, toLanguage, voiceType = "female", }) {
+    constructor({ apiUrl = "https://agents.dubit.live", useMic = false, inputTrack = null, token, fromLanguage, toLanguage, voiceType = "female", }) {
         this.apiUrl = apiUrl;
         this.useMic = useMic;
         this.inputTrack = inputTrack;
@@ -53,20 +53,28 @@ class Dubit {
                 else {
                     throw new Error("No audio input provided");
                 }
-                yield this.callObject.join({
+                yield this.callObject
+                    .join({
                     url: roomUrl,
                     audioSource: audioSource,
+                    videoSource: false,
                     subscribeToTracksAutomatically: true,
+                })
+                    .then((e) => __awaiter(this, void 0, void 0, function* () {
+                    if (e) {
+                        yield this.registerParticipant(e.local.session_id);
+                        yield this.addTranslationBot(roomUrl, e.local.session_id, this.fromLanguage, this.toLanguage, this.voiceType);
+                    }
+                }))
+                    .catch((error) => {
+                    console.error("Dubit:", error);
                 });
-                this.callObject.on("joined-meeting", (e) => __awaiter(this, void 0, void 0, function* () {
-                    yield this.registerParticipant(e.participants.local.session_id);
-                    yield this.addTranslationBot(roomUrl, e.participants.local.session_id, this.fromLanguage, this.toLanguage, this.voiceType);
-                }));
                 // Listen for new audio tracks (translated audio)
                 this.callObject.on("track-started", (event) => {
                     var _a;
                     // for now, only other participant is the bot; in future make this strict using participant.session_id
                     if (event.track.kind === "audio" && !((_a = event.participant) === null || _a === void 0 ? void 0 : _a.local)) {
+                        console.log("Dubit:: new remote audio track");
                         this.outputTrack = event.track;
                         if (this.onTranslatedTrackCallback && this.outputTrack) {
                             this.onTranslatedTrackCallback(this.outputTrack);
@@ -96,7 +104,7 @@ class Dubit {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const response = yield fetch(`${this.apiUrl}/meeting/new-meeting`, {
-                    method: "POST",
+                    method: "GET",
                     headers: {
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${token}`,
@@ -124,10 +132,11 @@ class Dubit {
                         Authorization: `Bearer ${this.token}`,
                     },
                     body: JSON.stringify({
-                        roomUrl,
-                        fromLanguage,
-                        toLanguage,
-                        participantId,
+                        room_url: roomUrl,
+                        from_language: fromLanguage,
+                        to_language: toLanguage,
+                        participant_id: participantId,
+                        bot_type: "translation",
                         male: voiceType === "male",
                     }),
                 });

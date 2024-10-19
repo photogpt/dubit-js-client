@@ -12,5 +12,8 @@
   "license": "BSD-2-Clause",
   "devDependencies": {
     "typescript": "5.1.6"
+  },
+  "dependencies": {
+    "agora-rtc-sdk-ng": "^4.22.1"
   }
 }
