@@ -5,6 +5,18 @@ import Daily, {
   DailyParticipantsObject,
 } from "@daily-co/daily-js";
 
+type getCaptionsEvent = {
+  action: string;
+  callClientId: string;
+  data: {
+    participant_id: string;
+    timestamp: string;
+    transcript: string;
+    type: string;
+  };
+  fromId: string;
+};
+
 export type DubitTranslationParams = {
   apiUrl?: string;
   useMic?: boolean; // defaults to false
@@ -211,6 +223,21 @@ export default class Dubit {
   // Allow the user to provide a callback for when the translated track is available
   public onTranslatedTrack(callback: (track: MediaStreamTrack) => void): void {
     this.onTranslatedTrackCallback = callback;
+  }
+
+  //Captions
+  public getCaptions(callback: (event: getCaptionsEvent) => void): void {
+    if (this.callObject) {
+      this.callObject.on("app-message", (event: getCaptionsEvent) => {
+        const { type } = event.data;
+  
+        if (type === 'user-transcript' || type === 'translation-transcript') {
+          callback(event);
+        }
+      });
+    } else {
+      console.error("Dubit:: callObject is not initialized");
+    }
   }
 
   // Clean up

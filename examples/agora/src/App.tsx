@@ -14,8 +14,14 @@ import AgoraRTC, {
 } from "agora-rtc-react";
 import { useCallback, useState } from "react";
 import Dubit from "../lib/dubit";
-
 import "./App.css";
+
+interface Transcript {
+  participant_id: string;
+  transcript?: string;
+  timestamp: number;
+  type: string;
+}
 
 export const Basics = () => {
   const [calling, setCalling] = useState(false);
@@ -50,8 +56,23 @@ export const Basics = () => {
    *
    * */
   const [dubitMicClient, setDubitMicClient] = useState<Dubit | null>(null);
+  const [transcripts, setTranscripts] = useState<Transcript[]>([]);
+
+  const handleTranscriptEvent = (event: any) => {
+    console.log("event" , event)
+    const { type, participant_id, transcript, timestamp } = event.data;
+
+    const newTranscript = {
+      participant_id: `Participant ${participant_id}`,
+      transcriptText: transcript,
+      type,
+      timestamp: timestamp
+    };    
+    setTranscripts((prevTranscripts) => [...prevTranscripts, newTranscript]);
+  };
+
   const interceptMicAndTranslate = () => {
-    const DUBIT_TOKEN = import.meta.env.VITE_DUBIT_TOKEN as string;
+    const DUBIT_TOKEN = "sk_027e80bf-d4f7-408d-8d86-2fbde6beffd7";
     const fromLanguage = "en-IN";
     const toLanguage = "hi-IN";
     const voiceType = "female";
@@ -59,12 +80,14 @@ export const Basics = () => {
       apiUrl: "https://test-api.dubit.live",
       useMic: false,
       inputTrack: localMicrophoneTrack?.getMediaStreamTrack(),
-      token: DUBIT_TOKEN,
+      token: "sk_027e80bf-d4f7-408d-8d86-2fbde6beffd7",
       fromLanguage,
       toLanguage,
       voiceType,
     });
     setDubitMicClient(dubit);
+
+    dubit.getCaptions(handleTranscriptEvent);
 
     // callback for unpublishing local microphone and publishing translated audio
     dubit.onTranslatedTrack((track: MediaStreamTrack) => {
@@ -103,7 +126,7 @@ export const Basics = () => {
   const [dubitRemoteUserClients, setDubitRemoteUserClients] =
     useState<DubitRemoteUserClient[]>();
   const translateRemoteUserAudio = (user: IAgoraRTCRemoteUser) => {
-    const DUBIT_TOKEN = import.meta.env.VITE_DUBIT_TOKEN as string;
+    const DUBIT_TOKEN = "sk_027e80bf-d4f7-408d-8d86-2fbde6beffd7";
     const fromLanguage = "hi-IN";
     const toLanguage = "en-US";
     const voiceType = "male";
@@ -124,6 +147,8 @@ export const Basics = () => {
       }
     });
 
+    dubit.getCaptions(handleTranscriptEvent);
+
     dubit.onTranslatedTrack((translatedTrack) => {
       AgoraRTC.createCustomAudioTrack({
         mediaStreamTrack: translatedTrack,
@@ -141,6 +166,8 @@ export const Basics = () => {
       ?.find((client) => client.id === user.uid)
       ?.client.destroy();
   };
+
+  console.log("transcripts,", transcripts)
 
   return (
     <>
