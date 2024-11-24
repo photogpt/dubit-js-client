@@ -11,8 +11,9 @@ import AgoraRTC, {
   ILocalTrack,
   IAgoraRTCRemoteUser,
   UID,
+  useClientEvent,
 } from "agora-rtc-react";
-import { useCallback, useState } from "react";
+import { useEffect, useState } from "react";
 import Dubit from "../lib/dubit";
 import "./App.css";
 
@@ -26,12 +27,14 @@ interface Transcript {
 export const Basics = () => {
   const [calling, setCalling] = useState(false);
   const isConnected = useIsConnected();
-  const [appId, setAppId] = useState("");
-  const [channel, setChannel] = useState("");
-  const [token, setToken] = useState("");
+  const [appId, setAppId] = useState("90a8516c754445d991ee3aca064c93a1");
+  const [channel, setChannel] = useState("d");
+  const [token, setToken] = useState(
+    "007eJxTYJiy6LSQ21XDM6unTlH33804d3+1RLR6rlhlcVOhQuuCTZMVGCwNEi1MDc2SzU1NTExMUywtDVNTjROTEw3MTJItjRMNM9ic0xsCGRk6D3OwMjJAIIjPyJDCwAAAcGwbrw=="
+  );
   useJoin(
     { appid: appId, channel: channel, token: token ? token : null },
-    calling,
+    calling
   );
 
   // Agora Client for publishing/unpublishing tracks
@@ -59,19 +62,30 @@ export const Basics = () => {
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
 
   const handleTranscriptEvent = (event: any) => {
-    console.log("event" , event)
+    console.log("event", event);
     const { type, participant_id, transcript, timestamp } = event.data;
 
     const newTranscript = {
       participant_id: `Participant ${participant_id}`,
       transcriptText: transcript,
       type,
-      timestamp: timestamp
-    };    
+      timestamp: timestamp,
+    };
     setTranscripts((prevTranscripts) => [...prevTranscripts, newTranscript]);
   };
 
   const interceptMicAndTranslate = () => {
+    if (dubitMicClient) {
+      console.log("Translation bot is already active");
+      return;
+    }
+    if (!localMicrophoneTrack?.getMediaStreamTrack()) {
+      //Show toast message to turn on the mic before adding the bot.
+      console.warn(
+        "No audio input provided. Please turn on your mic before adding the bot."
+      );
+      return;
+    }
     const DUBIT_TOKEN = "sk_027e80bf-d4f7-408d-8d86-2fbde6beffd7";
     const fromLanguage = "en-IN";
     const toLanguage = "hi-IN";
@@ -80,14 +94,14 @@ export const Basics = () => {
       apiUrl: "https://test-api.dubit.live",
       useMic: false,
       inputTrack: localMicrophoneTrack?.getMediaStreamTrack(),
-      token: "sk_027e80bf-d4f7-408d-8d86-2fbde6beffd7",
+      token: DUBIT_TOKEN,
       fromLanguage,
       toLanguage,
       voiceType,
     });
     setDubitMicClient(dubit);
 
-    dubit.getCaptions(handleTranscriptEvent);
+    dubit.onCaptions(handleTranscriptEvent);
 
     // callback for unpublishing local microphone and publishing translated audio
     dubit.onTranslatedTrack((track: MediaStreamTrack) => {
@@ -126,9 +140,25 @@ export const Basics = () => {
   const [dubitRemoteUserClients, setDubitRemoteUserClients] =
     useState<DubitRemoteUserClient[]>();
   const translateRemoteUserAudio = (user: IAgoraRTCRemoteUser) => {
+
+  const existingTranslation = dubitRemoteUserClients?.find(
+    (client) => client.id === user.uid
+  );
+
+  if (existingTranslation) {
+    console.log("Translation already active for this user");
+    return;
+  }
+
+  if (!user.audioTrack?.getMediaStreamTrack()) {
+    //Show toast message to turn on the mic before adding the bot.
+    console.warn("Remote user has no audio track");
+    return;
+  }
+
     const DUBIT_TOKEN = "sk_027e80bf-d4f7-408d-8d86-2fbde6beffd7";
-    const fromLanguage = "hi-IN";
-    const toLanguage = "en-US";
+    const fromLanguage = "en-IN";
+    const toLanguage = "hi-IN";
     const voiceType = "male";
     const dubit = new Dubit({
       apiUrl: "https://test-api.dubit.live",
@@ -147,7 +177,22 @@ export const Basics = () => {
       }
     });
 
-    dubit.getCaptions(handleTranscriptEvent);
+    setDubitRemoteUserClients((prev) => {
+      const newEntry = {
+        id: user.uid,
+        client: dubit,
+        from_language_name: fromLanguage,
+        to_language_name: toLanguage,
+      };
+
+      if (prev) {
+        return [...prev, newEntry];
+      } else {
+        return [newEntry];
+      }
+    });
+
+    dubit.onCaptions(handleTranscriptEvent);
 
     dubit.onTranslatedTrack((translatedTrack) => {
       AgoraRTC.createCustomAudioTrack({
@@ -167,7 +212,54 @@ export const Basics = () => {
       ?.client.destroy();
   };
 
-  console.log("transcripts,", transcripts)
+  useEffect(() => {
+    console.log("micOn", micOn);
+    if (micOn && dubitMicClient && localMicrophoneTrack) {
+      dubitMicClient.updateInputTrack(
+        localMicrophoneTrack.getMediaStreamTrack()
+      );
+    } else if (!micOn && dubitMicClient) {
+      if (dubitMicClient) {
+        console.log("dubitMicClient in mic off", dubitMicClient);
+        dubitMicClient.updateInputTrack(null);
+      }
+      if (localMicrophoneTrack) {
+        agoraClient.unpublish(localMicrophoneTrack as unknown as ILocalTrack);
+      }
+    }
+  }, [micOn]);
+
+  const hasDubitClient = (userId: UID) => {
+    return dubitRemoteUserClients?.some((client) => client.id === userId);
+  };
+
+  useClientEvent(
+    agoraClient,
+    "user-published",
+    async (user: IAgoraRTCRemoteUser, mediaType) => {
+      if (mediaType === "audio") {
+        console.log(`User ${user.uid} has turned on their microphone.`);
+        if (hasDubitClient(user.uid)) {
+          console.log("user", user);
+
+          await agoraClient.subscribe(user, mediaType);
+          user.audioTrack?.stop();
+
+          const remoteClient = dubitRemoteUserClients?.find(
+            (client) => client.id === user.uid
+          )?.client;
+
+          console.log("remoteClient", remoteClient);
+
+          if (user.audioTrack) {
+            user.audioTrack.setVolume(0);
+          }
+        }
+      }
+    }
+  );
+
+  console.log("transcripts,", transcripts);
 
   return (
     <>

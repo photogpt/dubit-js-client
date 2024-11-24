@@ -5,7 +5,7 @@ import Daily, {
   DailyParticipantsObject,
 } from "@daily-co/daily-js";
 
-type getCaptionsEvent = {
+export type CaptionEvent = {
   action: string;
   callClientId: string;
   data: {
@@ -90,28 +90,7 @@ export default class Dubit {
         throw new Error("No audio input provided");
       }
 
-      await this.callObject
-        .join({
-          url: roomUrl,
-          audioSource: audioSource,
-          videoSource: false,
-          subscribeToTracksAutomatically: true,
-        })
-        .then(async (e: void | DailyParticipantsObject) => {
-          if (e) {
-            await this.registerParticipant(e.local.session_id);
-            await this.addTranslationBot(
-              roomUrl,
-              e.local.session_id,
-              this.fromLanguage,
-              this.toLanguage,
-              this.voiceType,
-            );
-          }
-        })
-        .catch((error) => {
-          console.error("Dubit:", error);
-        });
+      await this.joinDailyRoom(roomUrl, audioSource);
 
       // Listen for new audio tracks (translated audio)
       this.callObject.on("track-started", (event: DailyEventObjectTrack) => {
@@ -215,6 +194,38 @@ export default class Dubit {
     }
   }
 
+  public async joinDailyRoom(
+    roomUrl: string,
+    audioSource: MediaStreamTrack,
+  ): Promise<void> {
+    if (!this.callObject) {
+      throw new Error('Call object not initialized');
+    }
+
+    await this.callObject
+      .join({
+        url: roomUrl,
+        audioSource: audioSource,
+        videoSource: false,
+        subscribeToTracksAutomatically: true,
+      })
+      .then(async (e: void | DailyParticipantsObject) => {
+        if (e) {
+          await this.registerParticipant(e.local.session_id);
+          await this.addTranslationBot(
+            roomUrl,
+            e.local.session_id,
+            this.fromLanguage,
+            this.toLanguage,
+            this.voiceType,
+          );
+        }
+      })
+      .catch((error) => {
+        console.error('Dubit:', error);
+      });
+  }
+
   // Method to retrieve the translated audio track
   public getTranslatedTrack(): MediaStreamTrack | null {
     return this.outputTrack;
@@ -226,9 +237,9 @@ export default class Dubit {
   }
 
   //Captions
-  public getCaptions(callback: (event: getCaptionsEvent) => void): void {
+  public onCaptions(callback: (event: CaptionEvent) => void): void {
     if (this.callObject) {
-      this.callObject.on("app-message", (event: getCaptionsEvent) => {
+      this.callObject.on("app-message", (event: CaptionEvent) => {
         const { type } = event.data;
   
         if (type === 'user-transcript' || type === 'translation-transcript') {
@@ -240,7 +251,36 @@ export default class Dubit {
     }
   }
 
-  // Clean up
+  public async updateInputTrack(newInputTrack: MediaStreamTrack | null): Promise<void> {
+    if (!this.callObject) {
+      throw new Error('Call object not initialized');
+    }
+
+    if (!newInputTrack) {
+      await this.callObject.setInputDevicesAsync({
+        audioSource: false
+      });
+      return;
+    }
+
+    if (newInputTrack.readyState === 'ended') {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                deviceId: newInputTrack.id
+            }
+        });
+        newInputTrack = stream.getAudioTracks()[0];
+    }
+
+    this.inputTrack = newInputTrack;
+
+    await this.callObject.setInputDevicesAsync({
+        audioSource: newInputTrack
+    });
+
+    console.log("newInputTrack", newInputTrack)
+  }
+
   public destroy(): void {
     if (this.callObject) {
       this.callObject.leave();
