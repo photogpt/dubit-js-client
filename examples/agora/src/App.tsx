@@ -27,11 +27,9 @@ interface Transcript {
 export const Basics = () => {
   const [calling, setCalling] = useState(false);
   const isConnected = useIsConnected();
-  const [appId, setAppId] = useState("90a8516c754445d991ee3aca064c93a1");
-  const [channel, setChannel] = useState("d");
-  const [token, setToken] = useState(
-    "007eJxTYJiy6LSQ21XDM6unTlH33804d3+1RLR6rlhlcVOhQuuCTZMVGCwNEi1MDc2SzU1NTExMUywtDVNTjROTEw3MTJItjRMNM9ic0xsCGRk6D3OwMjJAIIjPyJDCwAAAcGwbrw=="
-  );
+  const [appId, setAppId] = useState("");
+  const [channel, setChannel] = useState("");
+  const [token, setToken] = useState("");
   useJoin(
     { appid: appId, channel: channel, token: token ? token : null },
     calling

@@ -263,6 +263,12 @@ export default class Dubit {
       return;
     }
 
+    /**
+     *  When toggling the microphone, the audio track may occasionally be in an 'ended' state, rendering it unable to transmit audio.
+     * To resolve this, a new active audio stream is created using the same device ID.
+     * This process disconnects the old track and then establish a new one.
+     */
+
     if (newInputTrack.readyState === 'ended') {
         const stream = await navigator.mediaDevices.getUserMedia({ 
             audio: {
