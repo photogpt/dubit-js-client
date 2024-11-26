@@ -25,6 +25,9 @@ export type DubitTranslationParams = {
   fromLanguage: string; // BCP 47 language code
   toLanguage: string; // BCP 47 language code
   voiceType: string; // male or female
+
+  /** Determines if the current user is local (true) or remote (false) to configure bot translation routing */
+  isLocal: boolean;
 };
 
 export default class Dubit {
@@ -35,19 +38,21 @@ export default class Dubit {
   private fromLanguage: string;
   private toLanguage: string;
   private voiceType: string;
+  private isLocal: boolean;
 
   private callObject: DailyCall | null;
   private outputTrack: MediaStreamTrack | null;
   private onTranslatedTrackCallback: ((track: MediaStreamTrack) => void) | null;
 
   constructor({
-    apiUrl = "https://agents.dubit.live",
+    apiUrl = import.meta.env.VITE_DUBIT_API_URL as string,
     useMic = false,
     inputTrack = null,
     token,
     fromLanguage,
     toLanguage,
     voiceType = "female",
+    isLocal = false,
   }: DubitTranslationParams) {
     this.apiUrl = apiUrl;
     this.useMic = useMic;
@@ -56,6 +61,7 @@ export default class Dubit {
     this.fromLanguage = fromLanguage;
     this.toLanguage = toLanguage;
     this.voiceType = voiceType;
+    this.isLocal = isLocal;
 
     this.callObject = null;
     this.outputTrack = null;
@@ -77,20 +83,43 @@ export default class Dubit {
       }
 
       let audioSource: MediaStreamTrack | null = null;
+
       if (this.useMic) {
-        // Use the microphone as the audio input
+        /**
+         * When microphone is enabled, obtain the local audio stream track
+         * from user's microphone device for translation input
+         * For remote users useMic is always false
+         */
         const localStream = await navigator.mediaDevices.getUserMedia({
           audio: true,
         });
         audioSource = localStream.getAudioTracks()[0];
       } else if (this.inputTrack) {
-        // Use the provided MediaStreamTrack as the audio input
-        audioSource = this.inputTrack;
+        /**
+         * For local users with microphone disabled:
+         * Set audio source to null and mute mic in Daily Call
+         * Otherwise use the provided input track as audio source
+         */
+        if (this.isLocal && !this.useMic) {
+          audioSource = null;
+          this.callObject.setLocalAudio(false);
+        } else {
+          audioSource = this.inputTrack;
+        }
       } else {
-        throw new Error("No audio input provided");
+        /**
+         * When no audio input is available:
+         * - Update input track state to reflect disabled audio
+         */
+        audioSource = null;
+        this.updateInputTrack(null);
       }
 
-      await this.joinDailyRoom(roomUrl, audioSource);
+      await this.joinDailyRoom(
+        roomUrl,
+        audioSource,
+        this.isLocal && !this.useMic ? true : false
+      );
 
       // Listen for new audio tracks (translated audio)
       this.callObject.on("track-started", (event: DailyEventObjectTrack) => {
@@ -102,7 +131,7 @@ export default class Dubit {
             this.onTranslatedTrackCallback(this.outputTrack);
           } else {
             console.error(
-              "Dubit:: no track callback; please call onTranslatedTrack() and use the track for playing the translated audio",
+              "Dubit:: no track callback; please call onTranslatedTrack() and use the track for playing the translated audio"
             );
           }
         }
@@ -115,7 +144,7 @@ export default class Dubit {
             this.outputTrack = null;
             console.error("Dubit:: translation errored; translator left;");
           }
-        },
+        }
       );
     } catch (error) {
       console.error("Dubit::", error);
@@ -154,7 +183,7 @@ export default class Dubit {
     participantId: string,
     fromLanguage: string,
     toLanguage: string,
-    voiceType: string,
+    voiceType: string
   ): Promise<void> {
     try {
       await fetch(`${this.apiUrl}/meeting/bot/join`, {
@@ -196,20 +225,22 @@ export default class Dubit {
 
   public async joinDailyRoom(
     roomUrl: string,
-    audioSource: MediaStreamTrack,
+    audioSource: MediaStreamTrack | null,
+    startAudioOff: boolean
   ): Promise<void> {
     if (!this.callObject) {
-      throw new Error('Call object not initialized');
+      throw new Error("Call object not initialized");
     }
 
     await this.callObject
       .join({
         url: roomUrl,
-        audioSource: audioSource,
+        audioSource: audioSource || false,
         videoSource: false,
         subscribeToTracksAutomatically: true,
+        startAudioOff: startAudioOff, //Ensures the Daily call starts with microphone disabled when startAudioOff is true
       })
-      .then(async (e: void | DailyParticipantsObject) => {
+      .then(async (e: void | DailyParticipantsObject | void) => {
         if (e) {
           await this.registerParticipant(e.local.session_id);
           await this.addTranslationBot(
@@ -217,12 +248,12 @@ export default class Dubit {
             e.local.session_id,
             this.fromLanguage,
             this.toLanguage,
-            this.voiceType,
+            this.voiceType
           );
         }
       })
       .catch((error) => {
-        console.error('Dubit:', error);
+        console.error("Dubit:", error);
       });
   }
 
@@ -241,8 +272,8 @@ export default class Dubit {
     if (this.callObject) {
       this.callObject.on("app-message", (event: CaptionEvent) => {
         const { type } = event.data;
-  
-        if (type === 'user-transcript' || type === 'translation-transcript') {
+
+        if (type === "user-transcript" || type === "translation-transcript") {
           callback(event);
         }
       });
@@ -251,17 +282,23 @@ export default class Dubit {
     }
   }
 
-  public async updateInputTrack(newInputTrack: MediaStreamTrack | null): Promise<void> {
+  public async updateInputTrack(
+    newInputTrack: MediaStreamTrack | null
+  ): Promise<void> {
     if (!this.callObject) {
-      throw new Error('Call object not initialized');
+      throw new Error("Call object not initialized");
     }
 
     if (!newInputTrack) {
+      // If the new input track is null, we need to disable the microphone in Daily Call.
       await this.callObject.setInputDevicesAsync({
-        audioSource: false
+        audioSource: false,
       });
       return;
     }
+
+    // Enable the microphone
+    this.callObject.setLocalAudio(true);
 
     /**
      *  When toggling the microphone, the audio track may occasionally be in an 'ended' state, rendering it unable to transmit audio.
@@ -269,22 +306,22 @@ export default class Dubit {
      * This process disconnects the old track and then establish a new one.
      */
 
-    if (newInputTrack.readyState === 'ended') {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            audio: {
-                deviceId: newInputTrack.id
-            }
-        });
-        newInputTrack = stream.getAudioTracks()[0];
+    if (newInputTrack.readyState === "ended") {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          deviceId: newInputTrack.id,
+        },
+      });
+      newInputTrack = stream.getAudioTracks()[0];
     }
 
     this.inputTrack = newInputTrack;
 
     await this.callObject.setInputDevicesAsync({
-        audioSource: newInputTrack
+      audioSource: newInputTrack,
     });
 
-    console.log("newInputTrack", newInputTrack)
+    console.log("newInputTrack", newInputTrack);
   }
 
   public destroy(): void {
