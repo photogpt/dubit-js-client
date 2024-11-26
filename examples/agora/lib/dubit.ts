@@ -19,26 +19,20 @@ export type CaptionEvent = {
 
 export type DubitTranslationParams = {
   apiUrl?: string;
-  useMic?: boolean; // defaults to false
   inputTrack?: MediaStreamTrack | null;
   token: string;
   fromLanguage: string; // BCP 47 language code
   toLanguage: string; // BCP 47 language code
   voiceType: string; // male or female
-
-  /** Determines if the current user is local (true) or remote (false) to configure bot translation routing */
-  isLocal: boolean;
 };
 
 export default class Dubit {
   private apiUrl: string;
-  private useMic: boolean;
   private inputTrack: MediaStreamTrack | null;
   private token: string;
   private fromLanguage: string;
   private toLanguage: string;
   private voiceType: string;
-  private isLocal: boolean;
 
   private callObject: DailyCall | null;
   private outputTrack: MediaStreamTrack | null;
@@ -46,22 +40,18 @@ export default class Dubit {
 
   constructor({
     apiUrl = import.meta.env.VITE_DUBIT_API_URL as string,
-    useMic = false,
     inputTrack = null,
     token,
     fromLanguage,
     toLanguage,
     voiceType = "female",
-    isLocal = false,
   }: DubitTranslationParams) {
     this.apiUrl = apiUrl;
-    this.useMic = useMic;
     this.inputTrack = inputTrack;
     this.token = token;
     this.fromLanguage = fromLanguage;
     this.toLanguage = toLanguage;
     this.voiceType = voiceType;
-    this.isLocal = isLocal;
 
     this.callObject = null;
     this.outputTrack = null;
@@ -84,33 +74,28 @@ export default class Dubit {
 
       let audioSource: MediaStreamTrack | null = null;
 
-      if (this.useMic) {
-        /**
-         * When microphone is enabled, obtain the local audio stream track
-         * from user's microphone device for translation input
-         * For remote users useMic is always false
-         */
-        const localStream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
-        audioSource = localStream.getAudioTracks()[0];
-      } else if (this.inputTrack) {
-        /**
-         * For local users with microphone disabled:
-         * Set audio source to null and mute mic in Daily Call
-         * Otherwise use the provided input track as audio source
-         */
-        if (this.isLocal && !this.useMic) {
+      if (this.inputTrack) {
+        // Check if the input track is in "ended" state, which means microphone is initially off
+        // MediaStreamTrack.readyState can be "live", "ended", or "stopped"
+
+        if (this.inputTrack.readyState === "ended") {
+          // Microphone is off, so disable audio in Daily call:
+
           audioSource = null;
           this.callObject.setLocalAudio(false);
-        } else {
+
+          await this.callObject.setInputDevicesAsync({
+            audioSource: false,
+          });
+        }
+
+        // If track is active and streaming audio ("live" state)
+        if (this.inputTrack.readyState === "live") {
           audioSource = this.inputTrack;
         }
       } else {
-        /**
-         * When no audio input is available:
-         * - Update input track state to reflect disabled audio
-         */
+        // No input track provided, disable audio input
+
         audioSource = null;
         this.updateInputTrack(null);
       }
@@ -118,7 +103,7 @@ export default class Dubit {
       await this.joinDailyRoom(
         roomUrl,
         audioSource,
-        this.isLocal && !this.useMic ? true : false
+        audioSource ? false : true
       );
 
       // Listen for new audio tracks (translated audio)
@@ -235,6 +220,13 @@ export default class Dubit {
     await this.callObject
       .join({
         url: roomUrl,
+
+        /**  Configure audio source for Daily call:
+         * - If audioSource exists, use the MediaStreamTrack
+         * - If null/undefined, disable audio by setting to false
+         * See: https://docs.daily.co/reference/daily-js/factory-methods/create-call-object
+         */
+
         audioSource: audioSource || false,
         videoSource: false,
         subscribeToTracksAutomatically: true,
@@ -269,17 +261,17 @@ export default class Dubit {
 
   //Captions
   public onCaptions(callback: (event: CaptionEvent) => void): void {
-    if (this.callObject) {
-      this.callObject.on("app-message", (event: CaptionEvent) => {
-        const { type } = event.data;
-
-        if (type === "user-transcript" || type === "translation-transcript") {
-          callback(event);
-        }
-      });
-    } else {
-      console.error("Dubit:: callObject is not initialized");
+    if (!this.callObject) {
+      throw new Error("Dubit:: callObject is not initialized");
     }
+    // Subscribe to the 'app-message' event
+    this.callObject.on("app-message", (event: CaptionEvent) => {
+      const { type } = event.data;
+
+      if (type === "user-transcript" || type === "translation-transcript") {
+        callback(event);
+      }
+    });
   }
 
   public async updateInputTrack(

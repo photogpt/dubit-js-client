@@ -27,11 +27,10 @@ interface Transcript {
 export const Basics = () => {
   const [calling, setCalling] = useState(false);
   const isConnected = useIsConnected();
-  const [appId, setAppId] = useState("90a8516c754445d991ee3aca064c93a1");
-  const [channel, setChannel] = useState("d");
-  const [token, setToken] = useState(
-    "007eJxTYBDs91c4GsKjby9aus3m+Pvjh6X27xZkeGTm2+Lyt9i2Vk+BwdIg0cLU0CzZ3NTExMQ0xdLSMDXVODE50cDMJNnSONHQMd8lvSGQkeF10TwWRgYIBPEZGVIYGAAgMBuS"
-  );
+  const [appId, setAppId] = useState("");
+  const [channel, setChannel] = useState("");
+  const [token, setToken] = useState("");
+  
   useJoin(
     { appid: appId, channel: channel, token: token ? token : null },
     calling
@@ -86,13 +85,11 @@ export const Basics = () => {
 
     const dubit = new Dubit({
       apiUrl: import.meta.env.VITE_DUBIT_API_URL as string,
-      useMic: micOn,
-      inputTrack: micOn ? localMicrophoneTrack?.getMediaStreamTrack() : null,
+      inputTrack: localMicrophoneTrack?.getMediaStreamTrack(),
       token: DUBIT_TOKEN,
       fromLanguage,
       toLanguage,
       voiceType,
-      isLocal: true,
     });
 
     setDubitMicClient(dubit);
@@ -152,13 +149,11 @@ export const Basics = () => {
     const voiceType = "male";
     const dubit = new Dubit({
       apiUrl: import.meta.env.VITE_DUBIT_API_URL as string,
-      useMic: false,
       inputTrack: user.audioTrack?.getMediaStreamTrack(),
       token: DUBIT_TOKEN,
       fromLanguage,
       toLanguage,
       voiceType,
-      isLocal: false,
     });
 
     setDubitRemoteUserClients((prev) => {
