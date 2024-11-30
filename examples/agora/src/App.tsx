@@ -186,6 +186,7 @@ export const Basics = () => {
   };
   const stopRemoteUserTranslation = (user: IAgoraRTCRemoteUser) => {
     console.log("stopRemoteUserTranslation", user);
+    user.audioTrack?.setVolume(100);
     user.audioTrack?.play();
     dubitRemoteUserClients
       ?.find((client) => client.id === user.uid)
