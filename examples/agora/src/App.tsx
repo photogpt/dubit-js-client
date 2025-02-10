@@ -11,11 +11,18 @@ import AgoraRTC, {
   ILocalTrack,
   IAgoraRTCRemoteUser,
   UID,
+  useClientEvent,
 } from "agora-rtc-react";
-import { useCallback, useState } from "react";
+import { useEffect, useState } from "react";
 import Dubit from "../lib/dubit";
-
 import "./App.css";
+
+interface Transcript {
+  participant_id: string;
+  transcript?: string;
+  timestamp: number;
+  type: string;
+}
 
 export const Basics = () => {
   const [calling, setCalling] = useState(false);
@@ -23,9 +30,10 @@ export const Basics = () => {
   const [appId, setAppId] = useState("");
   const [channel, setChannel] = useState("");
   const [token, setToken] = useState("");
+  
   useJoin(
     { appid: appId, channel: channel, token: token ? token : null },
-    calling,
+    calling
   );
 
   // Agora Client for publishing/unpublishing tracks
@@ -50,21 +58,42 @@ export const Basics = () => {
    *
    * */
   const [dubitMicClient, setDubitMicClient] = useState<Dubit | null>(null);
+  const [transcripts, setTranscripts] = useState<Transcript[]>([]);
+
+  const handleTranscriptEvent = (event: any) => {
+    console.log("event", event);
+    const { type, participant_id, transcript, timestamp } = event.data;
+
+    const newTranscript = {
+      participant_id: `Participant ${participant_id}`,
+      transcriptText: transcript,
+      type,
+      timestamp: timestamp,
+    };
+    setTranscripts((prevTranscripts) => [...prevTranscripts, newTranscript]);
+  };
+
   const interceptMicAndTranslate = () => {
+    if (dubitMicClient) {
+      console.log("Translation bot is already active");
+      return;
+    }
     const DUBIT_TOKEN = import.meta.env.VITE_DUBIT_TOKEN as string;
     const fromLanguage = "en-IN";
     const toLanguage = "hi-IN";
     const voiceType = "female";
+
     const dubit = new Dubit({
-      apiUrl: "https://test-api.dubit.live",
-      useMic: false,
+      apiUrl: import.meta.env.VITE_DUBIT_API_URL as string,
       inputTrack: localMicrophoneTrack?.getMediaStreamTrack(),
       token: DUBIT_TOKEN,
       fromLanguage,
       toLanguage,
       voiceType,
     });
+
     setDubitMicClient(dubit);
+    dubit.onCaptions(handleTranscriptEvent);
 
     // callback for unpublishing local microphone and publishing translated audio
     dubit.onTranslatedTrack((track: MediaStreamTrack) => {
@@ -79,10 +108,12 @@ export const Basics = () => {
       dubit.destroy();
     };
   };
+
   const stopLocalAudioTranslation = () => {
     if (dubitMicClient) {
       agoraClient.publish([localMicrophoneTrack as unknown as ILocalTrack]);
       dubitMicClient.destroy();
+      setDubitMicClient(null);
     }
   };
 
@@ -103,26 +134,44 @@ export const Basics = () => {
   const [dubitRemoteUserClients, setDubitRemoteUserClients] =
     useState<DubitRemoteUserClient[]>();
   const translateRemoteUserAudio = (user: IAgoraRTCRemoteUser) => {
+    const existingTranslation = dubitRemoteUserClients?.find(
+      (client) => client.id === user.uid
+    );
+
+    if (existingTranslation) {
+      console.log("Translation already active for this user");
+      return;
+    }
+
     const DUBIT_TOKEN = import.meta.env.VITE_DUBIT_TOKEN as string;
-    const fromLanguage = "hi-IN";
-    const toLanguage = "en-US";
+    const fromLanguage = "en-IN";
+    const toLanguage = "ko-KR";
     const voiceType = "male";
     const dubit = new Dubit({
-      apiUrl: "https://test-api.dubit.live",
-      useMic: false,
+      apiUrl: import.meta.env.VITE_DUBIT_API_URL as string,
       inputTrack: user.audioTrack?.getMediaStreamTrack(),
       token: DUBIT_TOKEN,
       fromLanguage,
       toLanguage,
       voiceType,
     });
+
     setDubitRemoteUserClients((prev) => {
+      const newEntry = {
+        id: user.uid,
+        client: dubit,
+        from_language_name: fromLanguage,
+        to_language_name: toLanguage,
+      };
+
       if (prev) {
-        prev.push({ id: user.uid, client: dubit });
+        return [...prev, newEntry];
       } else {
-        return [{ id: user.uid, client: dubit }];
+        return [newEntry];
       }
     });
+
+    dubit.onCaptions(handleTranscriptEvent);
 
     dubit.onTranslatedTrack((translatedTrack) => {
       AgoraRTC.createCustomAudioTrack({
@@ -136,11 +185,101 @@ export const Basics = () => {
     };
   };
   const stopRemoteUserTranslation = (user: IAgoraRTCRemoteUser) => {
+    console.log("stopRemoteUserTranslation", user);
+    user.audioTrack?.setVolume(100);
     user.audioTrack?.play();
     dubitRemoteUserClients
       ?.find((client) => client.id === user.uid)
       ?.client.destroy();
   };
+
+  useEffect(() => {
+    if (!dubitMicClient) return;
+
+    /**
+     * When microphone is enabled again:
+     * Update Dubit's input track with the Agora microphone stream
+     */
+    if (micOn && localMicrophoneTrack) {
+      dubitMicClient.updateInputTrack(
+        localMicrophoneTrack.getMediaStreamTrack()
+      );
+    } else if (!micOn) {
+      /**
+       * When microphone is disabled:
+       * - Clear Dubit's input track
+       * - Stop publishing local audio to Agora if track exists
+       */
+      dubitMicClient.updateInputTrack(null);
+      if (localMicrophoneTrack) {
+        agoraClient.unpublish(localMicrophoneTrack as unknown as ILocalTrack);
+      }
+    }
+  }, [micOn, localMicrophoneTrack]);
+
+  const hasDubitClient = (userId: UID) => {
+    return dubitRemoteUserClients?.some((client) => client.id === userId);
+  };
+
+  useClientEvent(
+    agoraClient,
+    "user-published",
+    async (user: IAgoraRTCRemoteUser, mediaType) => {
+      if (mediaType === "audio") {
+        await agoraClient.subscribe(user, mediaType);
+
+        if (hasDubitClient(user.uid)) {
+          if (user.audioTrack) {
+            /** Mute original audio since we'll play translated version */
+            user.audioTrack.setVolume(0);
+
+            const remoteClient = dubitRemoteUserClients?.find(
+              (client) => client.id === user.uid
+            )?.client;
+
+            /**
+             * If remote user has audio enabled:
+             * Update Dubit client with their audio track for translation
+             */
+
+            if (user.hasAudio) {
+              await remoteClient?.updateInputTrack(
+                user.audioTrack?.getMediaStreamTrack()
+              );
+            } else {
+              /**
+               * If remote user disabled their audio:
+               * Clear the input track to stop translation
+               */
+              await remoteClient?.updateInputTrack(null);
+            }
+          }
+        }
+      }
+    }
+  );
+
+  useClientEvent(
+    agoraClient,
+    "user-unpublished",
+    async (user: IAgoraRTCRemoteUser, mediaType) => {
+      /**
+       * Handle audio unpublish events for users with Dubit translation:
+       * Occurs when remote user stops their audio stream
+       */
+
+      if (mediaType === "audio" && hasDubitClient(user.uid)) {
+        const remoteClient = dubitRemoteUserClients?.find(
+          (client) => client.id === user.uid
+        )?.client;
+
+        /** Clear the input track to stop translation when audio stream ends */
+        await remoteClient?.updateInputTrack(null);
+      }
+    }
+  );
+
+  console.log("transcripts,", transcripts);
 
   return (
     <>
