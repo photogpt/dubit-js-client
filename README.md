@@ -6,34 +6,15 @@
 
 ## Features
 
-- **Dubit Instance Creation:**  
-  Create a meeting room via your API to obtain a room URL and an owner token.
+- **Realtime Speech translation:**  
+  Translate speech/audio in realtime from one language to another. Supports multiple translators for to and fro translation. All you need to do is to provide a [MediaStreamTrack](https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack)
 
-- **Translator Bots:**  
-  Easily add one or more translator bots. Each translator:
-  - Creates its own Daily call instance (with isolated subscriptions).
-  - Joins the meeting room and registers with your API.
-  - Adds a translation bot for real-time audio translation.
-  - Exposes callbacks for:
-    - Translated audio track availability (`onTranslatedTrackReady`)
-    - Caption events (`onCaptions`)
-  - Supports updating input audio tracks and proper resource cleanup.
+- **Realtime original and translated captions:**  
+  Event handlers for original, interim(update as you speak) and translated captions.
 
 - **Utility Functions:**  
   - `getSupportedLanguages`: Retrieves a list of supported languages.
   - `getCompleteTranscript`: Fetches a complete transcript for a meeting instance.
-
-- **Robust Error Handling:**  
-  Handles errors during room joining, bot connection, and API interactions.
-
-- **Metadata Serialization:**  
-  Automatically serializes metadata to avoid issues with circular references.
-
-- **Event Filtering:**  
-  Filters caption events so that only relevant events trigger callbacks.
-
-- **Resource Cleanup:**  
-  Cleans up Daily call instances and internal references when translators are destroyed.
 
 ## Installation
 
