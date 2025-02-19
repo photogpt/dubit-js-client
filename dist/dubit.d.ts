@@ -32,5 +32,3 @@ declare const _default: {
     getCompleteTranscript: typeof getCompleteTranscript;
 };
 export default _default;
-export * from "./types";
-export * from "./translator";

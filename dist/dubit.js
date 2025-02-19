@@ -1,18 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __exportStar = (this && this.__exportStar) || function(m, exports) {
-    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -26,11 +12,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getCompleteTranscript = exports.getSupportedToLanguages = exports.getSupportedFromLanguages = exports.DubitInstance = exports.createNewInstance = void 0;
 const constants_1 = require("./constants");
 const translator_1 = require("./translator");
-const API_URL = process.env.DUBIT_API_URL;
 /**
  * Creates and returns a new DubitInstance
  */
-function createNewInstance({ token, apiUrl = API_URL, }) {
+function createNewInstance({ token, apiUrl = "https://test-api.dubit.live", }) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const response = yield fetch(`${apiUrl}/meeting/new-meeting`, {
@@ -114,9 +99,9 @@ function getSupportedToLanguages() {
     return constants_1.SUPPORTED_TO_LANGUAGES;
 }
 exports.getSupportedToLanguages = getSupportedToLanguages;
-function getCompleteTranscript({ instanceId, token, apiUrl = API_URL, }) {
+function getCompleteTranscript({ instanceId, token, apiUrl = "https://test-api.dubit.live", }) {
     return __awaiter(this, void 0, void 0, function* () {
-        const response = yield fetch(`${apiUrl}/meeting/transcript?instanceId=${encodeURIComponent(instanceId)}`, {
+        const response = yield fetch(`${apiUrl}/meeting/${instanceId}/transcripts`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -139,5 +124,3 @@ exports.default = {
     getSupportedToLanguages,
     getCompleteTranscript,
 };
-__exportStar(require("./types"), exports);
-__exportStar(require("./translator"), exports);
