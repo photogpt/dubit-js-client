@@ -10,11 +10,6 @@ export type DubitCreateParams = {
   apiUrl?: string;
 };
 
-export type DubitCreateResponse = {
-  instanceId: string; // room ID from the API
-  ownerToken: string;
-};
-
 export type TranslatorParams = {
   fromLang: string;
   toLang: string;
