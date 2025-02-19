@@ -7,15 +7,13 @@ import {
 import { Translator } from "./translator";
 import { DubitCreateParams, TranslatorParams } from "./types";
 
-const API_URL = process.env.DUBIT_API_URL as string;
-
 /**
  * Creates and returns a new DubitInstance
  */
 
 export async function createNewInstance({
   token,
-  apiUrl = API_URL,
+  apiUrl = "https://test-api.dubit.live",
 }: DubitCreateParams): Promise<DubitInstance> {
   try {
     const response = await fetch(`${apiUrl}/meeting/new-meeting`, {
@@ -141,22 +139,19 @@ export function getSupportedToLanguages(): LanguageType[] {
 export async function getCompleteTranscript({
   instanceId,
   token,
-  apiUrl = API_URL,
+  apiUrl = "https://test-api.dubit.live",
 }: {
   instanceId: string;
   token: string;
   apiUrl?: string;
 }): Promise<any> {
-  const response = await fetch(
-    `${apiUrl}/meeting/transcript?instanceId=${encodeURIComponent(instanceId)}`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+  const response = await fetch(`${apiUrl}/meeting/${instanceId}/transcripts`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     },
-  );
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch complete transcript");
   }
@@ -172,6 +167,3 @@ export default {
   getSupportedToLanguages,
   getCompleteTranscript,
 };
-
-export * from "./types";
-export * from "./translator";
