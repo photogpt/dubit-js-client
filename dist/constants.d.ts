@@ -45,3 +45,4 @@ export type LanguageType = {
 };
 export declare const SUPPORTED_FROM_LANGUAGES: LanguageType[];
 export declare const SUPPORTED_TO_LANGUAGES: LanguageType[];
+//# sourceMappingURL=constants.d.ts.map

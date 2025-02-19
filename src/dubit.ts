@@ -157,13 +157,3 @@ export async function getCompleteTranscript({
   }
   return response.json();
 }
-
-//
-// Default export for ease-of-use (import dubit from '@taic/dubit')
-//
-export default {
-  createNewInstance,
-  getSupportedFromLanguages,
-  getSupportedToLanguages,
-  getCompleteTranscript,
-};

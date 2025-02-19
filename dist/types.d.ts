@@ -16,3 +16,4 @@ export type TranslatorParams = {
     inputAudioTrack: MediaStreamTrack | null;
     metadata?: Record<string, any>;
 };
+//# sourceMappingURL=types.d.ts.map

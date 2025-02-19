@@ -71,3 +71,4 @@ export declare class Translator {
      */
     destroy(): void;
 }
+//# sourceMappingURL=translator.d.ts.map
