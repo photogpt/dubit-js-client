@@ -26,6 +26,8 @@ export type DubitTranslationParams = {
   voiceType: string; // male or female
 };
 
+const API_URL = process.env.VITE_DUBIT_API_URL;
+
 export default class Dubit {
   private apiUrl: string;
   private inputTrack: MediaStreamTrack | null;
@@ -39,7 +41,7 @@ export default class Dubit {
   private onTranslatedTrackCallback: ((track: MediaStreamTrack) => void) | null;
 
   constructor({
-    apiUrl = import.meta.env.VITE_DUBIT_API_URL as string,
+    apiUrl = API_URL as string,
     inputTrack = null,
     token,
     fromLanguage,
@@ -103,7 +105,7 @@ export default class Dubit {
       await this.joinDailyRoom(
         roomUrl,
         audioSource,
-        audioSource ? false : true
+        audioSource ? false : true,
       );
 
       // Listen for new audio tracks (translated audio)
@@ -116,7 +118,7 @@ export default class Dubit {
             this.onTranslatedTrackCallback(this.outputTrack);
           } else {
             console.error(
-              "Dubit:: no track callback; please call onTranslatedTrack() and use the track for playing the translated audio"
+              "Dubit:: no track callback; please call onTranslatedTrack() and use the track for playing the translated audio",
             );
           }
         }
@@ -129,7 +131,7 @@ export default class Dubit {
             this.outputTrack = null;
             console.error("Dubit:: translation errored; translator left;");
           }
-        }
+        },
       );
     } catch (error) {
       console.error("Dubit::", error);
@@ -168,7 +170,7 @@ export default class Dubit {
     participantId: string,
     fromLanguage: string,
     toLanguage: string,
-    voiceType: string
+    voiceType: string,
   ): Promise<void> {
     try {
       await fetch(`${this.apiUrl}/meeting/bot/join`, {
@@ -211,7 +213,7 @@ export default class Dubit {
   public async joinDailyRoom(
     roomUrl: string,
     audioSource: MediaStreamTrack | null,
-    startAudioOff: boolean
+    startAudioOff: boolean,
   ): Promise<void> {
     if (!this.callObject) {
       throw new Error("Call object not initialized");
@@ -240,7 +242,7 @@ export default class Dubit {
             e.local.session_id,
             this.fromLanguage,
             this.toLanguage,
-            this.voiceType
+            this.voiceType,
           );
         }
       })
@@ -275,7 +277,7 @@ export default class Dubit {
   }
 
   public async updateInputTrack(
-    newInputTrack: MediaStreamTrack | null
+    newInputTrack: MediaStreamTrack | null,
   ): Promise<void> {
     if (!this.callObject) {
       throw new Error("Call object not initialized");

@@ -13,10 +13,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const daily_js_1 = __importDefault(require("@daily-co/daily-js"));
+const API_URL = process.env.VITE_DUBIT_API_URL;
 class Dubit {
-    constructor({ apiUrl = "https://agents.dubit.live", useMic = false, inputTrack = null, token, fromLanguage, toLanguage, voiceType = "female", }) {
+    constructor({ apiUrl = API_URL, inputTrack = null, token, fromLanguage, toLanguage, voiceType = "female", }) {
         this.apiUrl = apiUrl;
-        this.useMic = useMic;
         this.inputTrack = inputTrack;
         this.token = token;
         this.fromLanguage = fromLanguage;
@@ -39,36 +39,28 @@ class Dubit {
                     throw new Error("Failed to obtain room URL");
                 }
                 let audioSource = null;
-                if (this.useMic) {
-                    // Use the microphone as the audio input
-                    const localStream = yield navigator.mediaDevices.getUserMedia({
-                        audio: true,
-                    });
-                    audioSource = localStream.getAudioTracks()[0];
-                }
-                else if (this.inputTrack) {
-                    // Use the provided MediaStreamTrack as the audio input
-                    audioSource = this.inputTrack;
+                if (this.inputTrack) {
+                    // Check if the input track is in "ended" state, which means microphone is initially off
+                    // MediaStreamTrack.readyState can be "live", "ended", or "stopped"
+                    if (this.inputTrack.readyState === "ended") {
+                        // Microphone is off, so disable audio in Daily call:
+                        audioSource = null;
+                        this.callObject.setLocalAudio(false);
+                        yield this.callObject.setInputDevicesAsync({
+                            audioSource: false,
+                        });
+                    }
+                    // If track is active and streaming audio ("live" state)
+                    if (this.inputTrack.readyState === "live") {
+                        audioSource = this.inputTrack;
+                    }
                 }
                 else {
-                    throw new Error("No audio input provided");
+                    // No input track provided, disable audio input
+                    audioSource = null;
+                    this.updateInputTrack(null);
                 }
-                yield this.callObject
-                    .join({
-                    url: roomUrl,
-                    audioSource: audioSource,
-                    videoSource: false,
-                    subscribeToTracksAutomatically: true,
-                })
-                    .then((e) => __awaiter(this, void 0, void 0, function* () {
-                    if (e) {
-                        yield this.registerParticipant(e.local.session_id);
-                        yield this.addTranslationBot(roomUrl, e.local.session_id, this.fromLanguage, this.toLanguage, this.voiceType);
-                    }
-                }))
-                    .catch((error) => {
-                    console.error("Dubit:", error);
-                });
+                yield this.joinDailyRoom(roomUrl, audioSource, audioSource ? false : true);
                 // Listen for new audio tracks (translated audio)
                 this.callObject.on("track-started", (event) => {
                     var _a;
@@ -165,6 +157,35 @@ class Dubit {
             }
         });
     }
+    joinDailyRoom(roomUrl, audioSource, startAudioOff) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.callObject) {
+                throw new Error("Call object not initialized");
+            }
+            yield this.callObject
+                .join({
+                url: roomUrl,
+                /**  Configure audio source for Daily call:
+                 * - If audioSource exists, use the MediaStreamTrack
+                 * - If null/undefined, disable audio by setting to false
+                 * See: https://docs.daily.co/reference/daily-js/factory-methods/create-call-object
+                 */
+                audioSource: audioSource || false,
+                videoSource: false,
+                subscribeToTracksAutomatically: true,
+                startAudioOff: startAudioOff, //Ensures the Daily call starts with microphone disabled when startAudioOff is true
+            })
+                .then((e) => __awaiter(this, void 0, void 0, function* () {
+                if (e) {
+                    yield this.registerParticipant(e.local.session_id);
+                    yield this.addTranslationBot(roomUrl, e.local.session_id, this.fromLanguage, this.toLanguage, this.voiceType);
+                }
+            }))
+                .catch((error) => {
+                console.error("Dubit:", error);
+            });
+        });
+    }
     // Method to retrieve the translated audio track
     getTranslatedTrack() {
         return this.outputTrack;
@@ -173,7 +194,53 @@ class Dubit {
     onTranslatedTrack(callback) {
         this.onTranslatedTrackCallback = callback;
     }
-    // Clean up
+    //Captions
+    onCaptions(callback) {
+        if (!this.callObject) {
+            throw new Error("Dubit:: callObject is not initialized");
+        }
+        // Subscribe to the 'app-message' event
+        this.callObject.on("app-message", (event) => {
+            const { type } = event.data;
+            if (type === "user-transcript" || type === "translation-transcript") {
+                callback(event);
+            }
+        });
+    }
+    updateInputTrack(newInputTrack) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.callObject) {
+                throw new Error("Call object not initialized");
+            }
+            if (!newInputTrack) {
+                // If the new input track is null, we need to disable the microphone in Daily Call.
+                yield this.callObject.setInputDevicesAsync({
+                    audioSource: false,
+                });
+                return;
+            }
+            // Enable the microphone
+            this.callObject.setLocalAudio(true);
+            /**
+             *  When toggling the microphone, the audio track may occasionally be in an 'ended' state, rendering it unable to transmit audio.
+             * To resolve this, a new active audio stream is created using the same device ID.
+             * This process disconnects the old track and then establish a new one.
+             */
+            if (newInputTrack.readyState === "ended") {
+                const stream = yield navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        deviceId: newInputTrack.id,
+                    },
+                });
+                newInputTrack = stream.getAudioTracks()[0];
+            }
+            this.inputTrack = newInputTrack;
+            yield this.callObject.setInputDevicesAsync({
+                audioSource: newInputTrack,
+            });
+            console.log("newInputTrack", newInputTrack);
+        });
+    }
     destroy() {
         if (this.callObject) {
             this.callObject.leave();

@@ -1,6 +1,16 @@
+export type CaptionEvent = {
+    action: string;
+    callClientId: string;
+    data: {
+        participant_id: string;
+        timestamp: string;
+        transcript: string;
+        type: string;
+    };
+    fromId: string;
+};
 export type DubitTranslationParams = {
     apiUrl?: string;
-    useMic?: boolean;
     inputTrack?: MediaStreamTrack | null;
     token: string;
     fromLanguage: string;
@@ -9,7 +19,6 @@ export type DubitTranslationParams = {
 };
 export default class Dubit {
     private apiUrl;
-    private useMic;
     private inputTrack;
     private token;
     private fromLanguage;
@@ -18,13 +27,16 @@ export default class Dubit {
     private callObject;
     private outputTrack;
     private onTranslatedTrackCallback;
-    constructor({ apiUrl, useMic, inputTrack, token, fromLanguage, toLanguage, voiceType, }: DubitTranslationParams);
+    constructor({ apiUrl, inputTrack, token, fromLanguage, toLanguage, voiceType, }: DubitTranslationParams);
     private init;
     private validateConfig;
     private getDailyRoomUrl;
     private addTranslationBot;
     private registerParticipant;
+    joinDailyRoom(roomUrl: string, audioSource: MediaStreamTrack | null, startAudioOff: boolean): Promise<void>;
     getTranslatedTrack(): MediaStreamTrack | null;
     onTranslatedTrack(callback: (track: MediaStreamTrack) => void): void;
+    onCaptions(callback: (event: CaptionEvent) => void): void;
+    updateInputTrack(newInputTrack: MediaStreamTrack | null): Promise<void>;
     destroy(): void;
 }
