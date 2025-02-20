@@ -231,6 +231,13 @@ export class Translator {
         allowMultipleCallInstances: true,
         videoSource: false,
         subscribeToTracksAutomatically: false,
+        inputSettings: {
+          audio: {
+            processor: {
+              type: "noise-cancellation",
+            },
+          },
+        },
       });
     } catch (error) {
       console.error("Translator: Failed to create Daily call object", error);
@@ -284,7 +291,8 @@ export class Translator {
     // this.translatorId = await this.fetchTranslationBotId(this.participantId);
     // ideally, we should check the bot id and subscribe to it
     this.callObject.on("track-started", (event: DailyEventObjectTrack) => {
-      if (event.track.kind === "audio" && !event.participant.local) {
+      console.debug("Translator: track-started", event);
+      if (event?.track?.kind === "audio" && !event?.participant?.local) {
         this.outputTrack = event.track;
         if (this.onTranslatedTrackCallback) {
           this.onTranslatedTrackCallback(this.outputTrack);

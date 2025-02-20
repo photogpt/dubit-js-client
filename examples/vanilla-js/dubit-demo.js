@@ -58,19 +58,35 @@ async function addTranslator() {
     });
 
     translator.onTranslatedTrackReady((track) => {
-      logDiv.innerHTML += `<p>Translated track ready! Routing to output device...</p>`;
+      logDiv.innerHTML += `<p>Translated track ready! Routing to output device: ${outputDeviceId}</p>`;
       const audioElement = document.createElement("audio");
-      audioElement.controls = true;
+      audioElement.autoplay = true;
+      audioElement.muted = false;
       audioElement.srcObject = new MediaStream([track]);
       audioElement
         .setSinkId(outputDeviceId)
         .catch((err) => console.error("Error setting output device:", err));
-      audioElement.play();
-      logDiv.appendChild(audioElement);
+      console.log(track);
+      audioElement
+        .play()
+        .then(() => {
+          console.log("Audio started playing");
+        })
+        .catch((error) => {
+          console.error("Error playing audio:", error);
+        });
+
+      document.body.appendChild(audioElement);
     });
 
+    const interimCaptionsDiv = document.getElementById("interimCaptions");
     translator.onCaptions((caption) => {
-      logDiv.innerHTML += `<p>Caption: ${caption.transcript}</p>`;
+      if (caption.type != "user-interim-transcript") {
+        if (caption.transcript)
+          logDiv.innerHTML += `<p>Caption: ${caption.transcript}</p>`;
+      } else {
+        interimCaptionsDiv.innerHTML = `<p>Live caption: ${caption.transcript}</p>`;
+      }
     });
   } catch (err) {
     console.error("Error adding translator:", err);
