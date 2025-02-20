@@ -1,56 +1,10 @@
 let dubitInstance;
 const token = "sk_36de4f9a-3c1d-4ea5-9ddd-a791ee396692";
 
-async function populateAudioDevices() {
-  try {
-    await navigator.mediaDevices.getUserMedia({ audio: true });
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    console.log("Devices:", devices);
-
-    const audioInputSelect = document.getElementById("audioInput");
-    const audioOutputSelect = document.getElementById("audioOutput");
-
-    audioInputSelect.innerHTML = "";
-    audioOutputSelect.innerHTML = "";
-
-    devices.forEach((device) => {
-      if (device.kind === "audioinput") {
-        const option = new Option(
-          device.label || `Mic ${audioInputSelect.length + 1}`,
-          device.deviceId,
-        );
-        audioInputSelect.appendChild(option);
-      }
-      if (device.kind === "audiooutput") {
-        const option = new Option(
-          device.label || `Speaker ${audioOutputSelect.length + 1}`,
-          device.deviceId,
-        );
-        audioOutputSelect.appendChild(option);
-      }
-    });
-  } catch (err) {
-    console.error("Error enumerating audio devices:", err);
-  }
-}
-
-async function populateLanguages() {
-  const sourceLangSelect = document.getElementById("sourceLang");
-  const targetLangSelect = document.getElementById("targetLang");
-
-  try {
-    const languages = await Dubit.getSupportedFromLanguages();
-    sourceLangSelect.innerHTML = "";
-    targetLangSelect.innerHTML = "";
-
-    languages.forEach((lang) => {
-      sourceLangSelect.appendChild(new Option(lang.label, lang.langCode));
-      targetLangSelect.appendChild(new Option(lang.label, lang.langCode));
-    });
-  } catch (err) {
-    console.error("Error fetching supported languages:", err);
-  }
-}
+document.getElementById("startCall").addEventListener("click", startCall);
+document
+  .getElementById("addTranslator")
+  .addEventListener("click", addTranslator);
 
 async function startCall() {
   document.getElementById("startCall").disabled = true;
@@ -124,7 +78,53 @@ async function addTranslator() {
   }
 }
 
-document.getElementById("startCall").addEventListener("click", startCall);
-document
-  .getElementById("addTranslator")
-  .addEventListener("click", addTranslator);
+async function populateAudioDevices() {
+  try {
+    await navigator.mediaDevices.getUserMedia({ audio: true });
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    console.log("Devices:", devices);
+
+    const audioInputSelect = document.getElementById("audioInput");
+    const audioOutputSelect = document.getElementById("audioOutput");
+
+    audioInputSelect.innerHTML = "";
+    audioOutputSelect.innerHTML = "";
+
+    devices.forEach((device) => {
+      if (device.kind === "audioinput") {
+        const option = new Option(
+          device.label || `Mic ${audioInputSelect.length + 1}`,
+          device.deviceId,
+        );
+        audioInputSelect.appendChild(option);
+      }
+      if (device.kind === "audiooutput") {
+        const option = new Option(
+          device.label || `Speaker ${audioOutputSelect.length + 1}`,
+          device.deviceId,
+        );
+        audioOutputSelect.appendChild(option);
+      }
+    });
+  } catch (err) {
+    console.error("Error enumerating audio devices:", err);
+  }
+}
+
+async function populateLanguages() {
+  const sourceLangSelect = document.getElementById("sourceLang");
+  const targetLangSelect = document.getElementById("targetLang");
+
+  try {
+    const languages = await Dubit.getSupportedFromLanguages();
+    sourceLangSelect.innerHTML = "";
+    targetLangSelect.innerHTML = "";
+
+    languages.forEach((lang) => {
+      sourceLangSelect.appendChild(new Option(lang.label, lang.langCode));
+      targetLangSelect.appendChild(new Option(lang.label, lang.langCode));
+    });
+  } catch (err) {
+    console.error("Error fetching supported languages:", err);
+  }
+}

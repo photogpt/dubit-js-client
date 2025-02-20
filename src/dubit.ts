@@ -163,6 +163,7 @@ export class DubitInstance {
       apiUrl: this.apiUrl,
       ...params,
     });
+
     translator.onDestroy = () => {
       this.activeTranslators.delete(translator.getParticipantId());
     };
