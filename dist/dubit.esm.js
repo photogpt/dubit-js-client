@@ -71,9 +71,145 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
     return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
 };
 
-//
-// Translator allows you to translate audio from one language to another.
-//
+var API_URL = "https://test-api.dubit.live";
+function createNewInstance(_a) {
+  var token = _a.token,
+    _b = _a.apiUrl,
+    apiUrl = _b === void 0 ? API_URL : _b;
+  return __awaiter(this, void 0, void 0, function () {
+    var response, data, instanceId, roomUrl, error_1;
+    return __generator(this, function (_c) {
+      switch (_c.label) {
+        case 0:
+          _c.trys.push([0, 3,, 4]);
+          return [4 /*yield*/, fetch("".concat(apiUrl, "/meeting/new-meeting"), {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer ".concat(token)
+            }
+          })];
+        case 1:
+          response = _c.sent();
+          if (!response.ok) {
+            throw new Error("Failed to create meeting room");
+          }
+          return [4 /*yield*/, response.json()];
+        case 2:
+          data = _c.sent();
+          instanceId = data.meeting_id;
+          roomUrl = data.roomUrl;
+          return [2 /*return*/, new DubitInstance(instanceId, roomUrl, token, apiUrl)];
+        case 3:
+          error_1 = _c.sent();
+          console.error("dubit.createNewInstance error:", error_1);
+          throw error_1;
+        case 4:
+          return [2 /*return*/];
+      }
+    });
+  });
+}
+function getSupportedFromLanguages() {
+  return SUPPORTED_FROM_LANGUAGES;
+}
+function getSupportedToLanguages() {
+  return SUPPORTED_TO_LANGUAGES;
+}
+function getCompleteTranscript(_a) {
+  var instanceId = _a.instanceId,
+    token = _a.token,
+    _b = _a.apiUrl,
+    apiUrl = _b === void 0 ? API_URL : _b;
+  return __awaiter(this, void 0, void 0, function () {
+    var response;
+    return __generator(this, function (_c) {
+      switch (_c.label) {
+        case 0:
+          return [4 /*yield*/, fetch("".concat(apiUrl, "/meeting/").concat(instanceId, "/transcripts"), {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer ".concat(token)
+            }
+          })];
+        case 1:
+          response = _c.sent();
+          if (!response.ok) {
+            throw new Error("Failed to fetch complete transcript");
+          }
+          return [2 /*return*/, response.json()];
+      }
+    });
+  });
+}
+var DubitInstance = /** @class */function () {
+  function DubitInstance(instanceId, roomUrl, ownerToken, apiUrl) {
+    this.activeTranslators = new Map();
+    this.instanceId = instanceId;
+    this.roomUrl = roomUrl;
+    this.ownerToken = ownerToken;
+    this.apiUrl = apiUrl;
+  }
+  DubitInstance.prototype.validateTranslatorParams = function (params) {
+    if (!SUPPORTED_FROM_LANGUAGES.map(function (x) {
+      return x.langCode;
+    }).includes(params.fromLang)) {
+      return new Error("Unsupported fromLang: ".concat(params.fromLang, ". Supported from languages: ").concat(SUPPORTED_FROM_LANGUAGES.map(function (x) {
+        return x.langCode;
+      })));
+    }
+    if (!SUPPORTED_TO_LANGUAGES.map(function (x) {
+      return x.langCode;
+    }).includes(params.toLang)) {
+      return new Error("Unsupported toLang: ".concat(params.toLang, ". Supported to languages: ").concat(SUPPORTED_TO_LANGUAGES.map(function (x) {
+        return x.langCode;
+      })));
+    }
+    if (params.voiceType !== "male" && params.voiceType !== "female") {
+      return new Error("Unsupported voiceType: ".concat(params.voiceType, ". Supported voice types: male, female"));
+    }
+    if (params.inputAudioTrack === null) {
+      return new Error("inputAudioTrack is required");
+    }
+    if (params.version && !SUPPORTED_TRANSLATOR_VERSIONS.map(function (x) {
+      return x.version;
+    }).includes(params.version)) {
+      return new Error("Unsupported version: ".concat(params.version, ". Supported versions: ").concat(SUPPORTED_TRANSLATOR_VERSIONS));
+    }
+    return null;
+  };
+  DubitInstance.prototype.addTranslator = function (params) {
+    return __awaiter(this, void 0, void 0, function () {
+      var validationError, translator;
+      var _this = this;
+      return __generator(this, function (_a) {
+        switch (_a.label) {
+          case 0:
+            validationError = this.validateTranslatorParams(params);
+            if (validationError) {
+              return [2 /*return*/, Promise.reject(validationError)];
+            }
+            translator = new Translator(__assign({
+              instanceId: this.instanceId,
+              roomUrl: this.roomUrl,
+              token: this.ownerToken,
+              apiUrl: this.apiUrl
+            }, params));
+            translator.onDestroy = function () {
+              _this.activeTranslators.delete(translator.getParticipantId());
+            };
+            return [4 /*yield*/, translator.init()];
+          case 1:
+            _a.sent();
+            this.activeTranslators.set(translator.getParticipantId(), translator);
+            return [2 /*return*/, translator];
+        }
+      });
+    });
+  };
+  return DubitInstance;
+}();
 var Translator = /** @class */function () {
   function Translator(params) {
     this.version = "latest";
@@ -94,19 +230,12 @@ var Translator = /** @class */function () {
     this.inputAudioTrack = params.inputAudioTrack;
     this.metadata = params.metadata ? safeSerializeMetadata(params.metadata) : {};
   }
-  /**
-   * Initialize the translator:
-   * - Create a Call instance (with multiple-instance support)
-   * - Join the room using the provided input audio track
-   * - Register the local participant and add a translation bot via the API
-   * - Set up event listeners for translated tracks and captions.
-   */
   Translator.prototype.init = function () {
     return __awaiter(this, void 0, void 0, function () {
-      var audioSource, error_1, participants, error_2, _a;
+      var audioSource, error_2, participants, error_3;
       var _this = this;
-      return __generator(this, function (_b) {
-        switch (_b.label) {
+      return __generator(this, function (_a) {
+        switch (_a.label) {
           case 0:
             try {
               this.callObject = Daily.createCallObject({
@@ -118,9 +247,9 @@ var Translator = /** @class */function () {
               console.error("Translator: Failed to create Daily call object", error);
               throw error;
             }
-            _b.label = 1;
+            _a.label = 1;
           case 1:
-            _b.trys.push([1, 3,, 4]);
+            _a.trys.push([1, 3,, 4]);
             audioSource = false;
             if (this.inputAudioTrack && this.inputAudioTrack.readyState === "live") {
               audioSource = this.inputAudioTrack;
@@ -133,41 +262,38 @@ var Translator = /** @class */function () {
               startAudioOff: audioSource === false
             })];
           case 2:
-            _b.sent();
+            _a.sent();
             return [3 /*break*/, 4];
           case 3:
-            error_1 = _b.sent();
-            console.error("Translator: Failed to join the Daily room", error_1);
-            throw error_1;
+            error_2 = _a.sent();
+            console.error("Translator: Failed to join the Daily room", error_2);
+            throw error_2;
           case 4:
             participants = this.callObject.participants();
             if (!participants.local) {
               throw new Error("Translator: Failed to obtain local participant");
             }
             this.participantId = participants.local.session_id;
-            _b.label = 5;
+            _a.label = 5;
           case 5:
-            _b.trys.push([5, 8,, 9]);
+            _a.trys.push([5, 8,, 9]);
             return [4 /*yield*/, this.registerParticipant(this.participantId)];
           case 6:
-            _b.sent();
+            _a.sent();
             return [4 /*yield*/, this.addTranslationBot(this.roomUrl, this.participantId, this.fromLang, this.toLang, this.voiceType)];
           case 7:
-            _b.sent();
+            _a.sent();
             return [3 /*break*/, 9];
           case 8:
-            error_2 = _b.sent();
-            console.error("Translator: Error registering participant or adding bot", error_2);
-            throw error_2;
+            error_3 = _a.sent();
+            console.error("Translator: Error registering participant or adding bot", error_3);
+            throw error_3;
           case 9:
-            _a = this;
-            return [4 /*yield*/, this.fetchTranslationBotId(this.participantId)];
-          case 10:
-            _a.translatorId = _b.sent();
-            // Listen for translated audio track.
+            // this should be done differently
+            // this.translatorId = await this.fetchTranslationBotId(this.participantId);
+            // ideally, we should check the bot id and subscribe to it
             this.callObject.on("track-started", function (event) {
-              var _a;
-              if (event.track.kind === "audio" && ((_a = event.participant) === null || _a === void 0 ? void 0 : _a.session_id) == _this.translatorId) {
+              if (event.track.kind === "audio" && !event.participant.local) {
                 _this.outputTrack = event.track;
                 if (_this.onTranslatedTrackCallback) {
                   _this.onTranslatedTrackCallback(_this.outputTrack);
@@ -201,7 +327,7 @@ var Translator = /** @class */function () {
    */
   Translator.prototype.registerParticipant = function (participantId) {
     return __awaiter(this, void 0, void 0, function () {
-      var response, error_3;
+      var response, error_4;
       return __generator(this, function (_a) {
         switch (_a.label) {
           case 0:
@@ -223,9 +349,9 @@ var Translator = /** @class */function () {
             }
             return [3 /*break*/, 3];
           case 2:
-            error_3 = _a.sent();
-            console.error("Translator: Error registering participant", error_3);
-            throw error_3;
+            error_4 = _a.sent();
+            console.error("Translator: Error registering participant", error_4);
+            throw error_4;
           case 3:
             return [2 /*return*/];
         }
@@ -237,7 +363,7 @@ var Translator = /** @class */function () {
    */
   Translator.prototype.addTranslationBot = function (roomUrl, participantId, fromLanguage, toLanguage, voiceType) {
     return __awaiter(this, void 0, void 0, function () {
-      var response, error_4;
+      var response, error_5;
       return __generator(this, function (_a) {
         switch (_a.label) {
           case 0:
@@ -265,9 +391,9 @@ var Translator = /** @class */function () {
             }
             return [3 /*break*/, 3];
           case 2:
-            error_4 = _a.sent();
-            console.error("Translator: Error adding translation bot", error_4);
-            throw error_4;
+            error_5 = _a.sent();
+            console.error("Translator: Error adding translation bot", error_5);
+            throw error_5;
           case 3:
             return [2 /*return*/];
         }
@@ -311,24 +437,15 @@ var Translator = /** @class */function () {
       });
     });
   };
-  /**
-   * Registers a callback to be invoked when the translated audio track is available.
-   */
   Translator.prototype.onTranslatedTrackReady = function (callback) {
     this.onTranslatedTrackCallback = callback;
     if (this.outputTrack) {
       callback(this.outputTrack);
     }
   };
-  /**
-   * Registers a callback for caption events.
-   */
   Translator.prototype.onCaptions = function (callback) {
     this.onCaptionsCallback = callback;
   };
-  /**
-   * Allows updating the input audio track.
-   */
   Translator.prototype.updateInputTrack = function (newInputTrack) {
     return __awaiter(this, void 0, void 0, function () {
       var stream;
@@ -369,37 +486,24 @@ var Translator = /** @class */function () {
       });
     });
   };
-  /**
-   * Returns the local participant's session_id
-   */
   Translator.prototype.getParticipantId = function () {
     return this.participantId;
   };
-  /**
-   * Returns the currently available translated audio track, if any.
-   */
   Translator.prototype.getTranslatedTrack = function () {
     return this.outputTrack;
   };
-  /**
-   * Clean up the Daily call instance and event listeners.
-   */
   Translator.prototype.destroy = function () {
     if (this.callObject) {
       this.callObject.leave();
       this.callObject.destroy();
       this.callObject = null;
     }
-    // Invoke onDestroy callback for parent cleanup.
     if (this.onDestroy) {
       this.onDestroy();
     }
   };
   return Translator;
 }();
-//
-// Helper: Safely serialize metadata (removing potential circular references)
-//
 function safeSerializeMetadata(metadata) {
   try {
     JSON.stringify(metadata);
@@ -409,7 +513,6 @@ function safeSerializeMetadata(metadata) {
     return {};
   }
 }
-
 /**
  * An array of available translator versions.
  */
@@ -1032,154 +1135,4 @@ var SUPPORTED_TO_LANGUAGES = [{
   label: "isiZulu (South Africa)"
 }];
 
-/**
- * Creates and returns a new DubitInstance
- */
-function createNewInstance(_a) {
-  var token = _a.token,
-    _b = _a.apiUrl,
-    apiUrl = _b === void 0 ? "https://test-api.dubit.live" : _b;
-  return __awaiter(this, void 0, void 0, function () {
-    var response, data, instanceId, roomUrl, error_1;
-    return __generator(this, function (_c) {
-      switch (_c.label) {
-        case 0:
-          _c.trys.push([0, 3,, 4]);
-          return [4 /*yield*/, fetch("".concat(apiUrl, "/meeting/new-meeting"), {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer ".concat(token)
-            }
-          })];
-        case 1:
-          response = _c.sent();
-          if (!response.ok) {
-            throw new Error("Failed to create meeting room");
-          }
-          return [4 /*yield*/, response.json()];
-        case 2:
-          data = _c.sent();
-          instanceId = data.meeting_id;
-          roomUrl = data.roomUrl;
-          return [2 /*return*/, new DubitInstance(instanceId, roomUrl, token, apiUrl)];
-        case 3:
-          error_1 = _c.sent();
-          console.error("dubit.createNewInstance error:", error_1);
-          throw error_1;
-        case 4:
-          return [2 /*return*/];
-      }
-    });
-  });
-}
-//
-// The Dubit Instance, tracks all active translators
-//
-var DubitInstance = /** @class */function () {
-  function DubitInstance(instanceId, roomUrl, ownerToken, apiUrl) {
-    this.activeTranslators = new Map();
-    this.instanceId = instanceId;
-    this.roomUrl = roomUrl;
-    this.ownerToken = ownerToken;
-    this.apiUrl = apiUrl;
-  }
-  DubitInstance.prototype.validateTranslatorParams = function (params) {
-    if (!SUPPORTED_FROM_LANGUAGES.map(function (x) {
-      return x.langCode;
-    }).includes(params.fromLang)) {
-      return new Error("Unsupported fromLang: ".concat(params.fromLang, ". Supported from languages: ").concat(SUPPORTED_FROM_LANGUAGES.map(function (x) {
-        return x.langCode;
-      })));
-    }
-    if (!SUPPORTED_TO_LANGUAGES.map(function (x) {
-      return x.langCode;
-    }).includes(params.toLang)) {
-      return new Error("Unsupported toLang: ".concat(params.toLang, ". Supported to languages: ").concat(SUPPORTED_TO_LANGUAGES.map(function (x) {
-        return x.langCode;
-      })));
-    }
-    if (params.voiceType !== "male" && params.voiceType !== "female") {
-      return new Error("Unsupported voiceType: ".concat(params.voiceType, ". Supported voice types: male, female"));
-    }
-    if (params.inputAudioTrack === null) {
-      return new Error("inputAudioTrack is required");
-    }
-    if (params.version && !SUPPORTED_TRANSLATOR_VERSIONS.map(function (x) {
-      return x.version;
-    }).includes(params.version)) {
-      return new Error("Unsupported version: ".concat(params.version, ". Supported versions: ").concat(SUPPORTED_TRANSLATOR_VERSIONS));
-    }
-    return null;
-  };
-  /**
-   * Creates a new translator bot (with its own call instance)
-   */
-  DubitInstance.prototype.addTranslator = function (params) {
-    return __awaiter(this, void 0, void 0, function () {
-      var validationError, translator;
-      var _this = this;
-      return __generator(this, function (_a) {
-        switch (_a.label) {
-          case 0:
-            validationError = this.validateTranslatorParams(params);
-            if (validationError) {
-              return [2 /*return*/, Promise.reject(validationError)];
-            }
-            translator = new Translator(__assign({
-              instanceId: this.instanceId,
-              roomUrl: this.roomUrl,
-              token: this.ownerToken,
-              apiUrl: this.apiUrl
-            }, params));
-            // Set up cleanup callback to remove from this.translators when destroyed
-            translator.onDestroy = function () {
-              _this.activeTranslators.delete(translator.getParticipantId());
-            };
-            return [4 /*yield*/, translator.init()];
-          case 1:
-            _a.sent();
-            this.activeTranslators.set(translator.getParticipantId(), translator);
-            return [2 /*return*/, translator];
-        }
-      });
-    });
-  };
-  return DubitInstance;
-}();
-function getSupportedFromLanguages() {
-  return SUPPORTED_FROM_LANGUAGES;
-}
-function getSupportedToLanguages() {
-  return SUPPORTED_TO_LANGUAGES;
-}
-function getCompleteTranscript(_a) {
-  var instanceId = _a.instanceId,
-    token = _a.token,
-    _b = _a.apiUrl,
-    apiUrl = _b === void 0 ? "https://test-api.dubit.live" : _b;
-  return __awaiter(this, void 0, void 0, function () {
-    var response;
-    return __generator(this, function (_c) {
-      switch (_c.label) {
-        case 0:
-          return [4 /*yield*/, fetch("".concat(apiUrl, "/meeting/").concat(instanceId, "/transcripts"), {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer ".concat(token)
-            }
-          })];
-        case 1:
-          response = _c.sent();
-          if (!response.ok) {
-            throw new Error("Failed to fetch complete transcript");
-          }
-          return [2 /*return*/, response.json()];
-      }
-    });
-  });
-}
-
-export { DubitInstance, Translator, createNewInstance, getCompleteTranscript, getSupportedFromLanguages, getSupportedToLanguages };
-//# sourceMappingURL=dubit.esm.js.map
+export { DubitInstance, SUPPORTED_FROM_LANGUAGES, SUPPORTED_TO_LANGUAGES, SUPPORTED_TRANSLATOR_VERSIONS, Translator, createNewInstance, getCompleteTranscript, getSupportedFromLanguages, getSupportedToLanguages };

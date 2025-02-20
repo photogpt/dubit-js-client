@@ -1,29 +1,31 @@
 import typescript from "@rollup/plugin-typescript";
-import dts from "rollup-plugin-dts";
 import { babel } from "@rollup/plugin-babel";
 import { nodeResolve } from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 
 export default [
   {
-    input: "src/index.ts",
+    input: "src/dubit.ts",
     external: ["@daily-co/daily-js"], // treat daily-js as external
     output: [
       {
         file: "dist/dubit.cjs.js",
         format: "cjs",
-        sourcemap: true,
+        sourcemap: false,
       },
       {
         file: "dist/dubit.esm.js",
         format: "esm",
-        sourcemap: true,
+        sourcemap: false,
       },
       {
         file: "dist/dubit.umd.js",
         format: "umd",
         name: "Dubit",
-        sourcemap: true,
+        sourcemap: false,
+        globals: {
+          "@daily-co/daily-js": "Daily",
+        },
       },
     ],
     plugins: [
@@ -32,7 +34,12 @@ export default [
       // Converts CommonJS modules to ES6
       commonjs(),
       // Transpile TypeScript
-      typescript({ tsconfig: "./tsconfig.json" }),
+      typescript({
+        tsconfig: "./tsconfig.json",
+        compilerOptions: {
+          module: "ESNext",
+        },
+      }),
       // Transpile to ES5 if necessary
       babel({
         babelHelpers: "bundled",
@@ -40,11 +47,5 @@ export default [
         exclude: "node_modules/**",
       }),
     ],
-  },
-  // Type declarations bundle
-  {
-    input: "dist/index.d.ts", // output folder from tsc with declarations
-    output: [{ file: "dist/dubit.d.ts", format: "esm" }],
-    plugins: [dts()],
   },
 ];
