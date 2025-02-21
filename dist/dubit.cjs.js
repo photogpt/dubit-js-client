@@ -216,9 +216,11 @@ var Translator = /** @class */function () {
   function Translator(params) {
     this.version = "latest";
     this.callObject = null;
-    this.outputTrack = null;
+    this.translatedTrack = null;
     this.participantId = "";
     this.translatorId = "";
+    this.participantTracks = new Map();
+    this.outputDeviceId = undefined;
     this.onTranslatedTrackCallback = null;
     this.onCaptionsCallback = null;
     this.instanceId = params.instanceId;
@@ -231,6 +233,7 @@ var Translator = /** @class */function () {
     this.version = params.version || this.version;
     this.inputAudioTrack = params.inputAudioTrack;
     this.metadata = params.metadata ? safeSerializeMetadata(params.metadata) : {};
+    this.outputDeviceId = params.outputDeviceId;
   }
   Translator.prototype.init = function () {
     return __awaiter(this, void 0, void 0, function () {
@@ -267,7 +270,7 @@ var Translator = /** @class */function () {
               url: this.roomUrl,
               audioSource: audioSource,
               videoSource: false,
-              subscribeToTracksAutomatically: true,
+              subscribeToTracksAutomatically: false,
               startAudioOff: audioSource === false
             })];
           case 2:
@@ -298,44 +301,62 @@ var Translator = /** @class */function () {
             console.error("Translator: Error registering participant or adding bot", error_3);
             throw error_3;
           case 9:
-            // this should be done differently
-            // this.translatorId = await this.fetchTranslationBotId(this.participantId);
-            // ideally, we should check the bot id and subscribe to it
             this.callObject.on("track-started", function (event) {
               var _a, _b;
-              console.debug("Translator: track-started", event);
-              if (((_a = event === null || event === void 0 ? void 0 : event.track) === null || _a === void 0 ? void 0 : _a.kind) === "audio" && !((_b = event === null || event === void 0 ? void 0 : event.participant) === null || _b === void 0 ? void 0 : _b.local)) {
-                _this.outputTrack = event.track;
-                if (_this.onTranslatedTrackCallback) {
-                  _this.onTranslatedTrackCallback(_this.outputTrack);
-                }
+              if (((_a = event === null || event === void 0 ? void 0 : event.track) === null || _a === void 0 ? void 0 : _a.kind) === "audio" && !((_b = event === null || event === void 0 ? void 0 : event.participant) === null || _b === void 0 ? void 0 : _b.local) && event.callClientId == _this.callObject.callClientId) {
+                console.debug("CallClient: ".concat(_this.callObject.callClientId, " , event:"), event);
+                _this.participantTracks.set(event.participant.session_id, event.track);
               }
             });
-            // Listen for caption events with filtering.
+            this.callObject.on("participant-joined", function (event) {
+              var _a;
+              var fromLangLabel = SUPPORTED_FROM_LANGUAGES.find(function (x) {
+                return x.langCode == _this.fromLang;
+              }).label;
+              var toLangLabel = SUPPORTED_TO_LANGUAGES.find(function (x) {
+                return x.langCode == _this.toLang;
+              }).label;
+              if (!((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) && event.callClientId == _this.callObject.callClientId && event.participant.user_name.includes("Translator ".concat(fromLangLabel, " -> ").concat(toLangLabel))) {
+                console.debug("SetOutputDeviceAsync - CallClient: ".concat(_this.callObject.callClientId, " , outputDeviceId:"), _this.outputDeviceId);
+                _this.callObject.setOutputDeviceAsync({
+                  outputDeviceId: _this.outputDeviceId
+                });
+                console.debug("Subscribing - CallClient: ".concat(_this.callObject.callClientId, " , event:"), event);
+                _this.callObject.updateParticipant(event.participant.session_id, {
+                  setSubscribedTracks: {
+                    audio: true
+                  }
+                });
+              }
+            });
             this.callObject.on("app-message", function (event) {
+              var _a;
+              if (event.callClientId != _this.callObject.callClientId) return;
               var data = event.data;
-              // Filter: ensure data exists, has the expected types, and is relevant to this translator.
-              if (data && (data.type === "user-transcript" || data.type === "translation-transcript" || data.type === "user-interim-transcript") && data.participant_id === _this.participantId) {
-                if (_this.onCaptionsCallback) {
-                  _this.onCaptionsCallback(data);
-                }
+              if (!((_a = data === null || data === void 0 ? void 0 : data.type) === null || _a === void 0 ? void 0 : _a.includes("transcript"))) return;
+              var validTypes = ["user-transcript", "translation-transcript", "user-interim-transcript"];
+              if (validTypes.includes(data.type) && data.participant_id === _this.participantId && (data === null || data === void 0 ? void 0 : data.transcript) && _this.onCaptionsCallback) {
+                _this.onCaptionsCallback(data);
               }
             });
             // Clear output track if a non-local participant (i.e. the bot) leaves.
             this.callObject.on("participant-left", function (event) {
-              if (!event.participant.local && _this.outputTrack) {
-                _this.outputTrack = null;
+              if (!event.participant.local && _this.translatedTrack) {
+                _this.translatedTrack = null;
                 console.error("Translator: Translation bot left; output track cleared");
               }
+            });
+            this.fetchTranslationBotId(this.participantId).then(function (botId) {
+              console.debug("Translator ready, Call Id:".concat(_this.callObject.callClientId, " Translator Id: ").concat(botId));
+            }).catch(function (error) {
+              console.error("Translator: Error fetching translator id", error);
             });
             return [2 /*return*/];
         }
       });
     });
   };
-  /**
-   * Registers the local participant
-   */
+  // Register local participant
   Translator.prototype.registerParticipant = function (participantId) {
     return __awaiter(this, void 0, void 0, function () {
       var response, error_4;
@@ -369,9 +390,7 @@ var Translator = /** @class */function () {
       });
     });
   };
-  /**
-   * Adds a translation bot for the given participant.
-   */
+  // Adds a translation bot for the given participant
   Translator.prototype.addTranslationBot = function (roomUrl, participantId, fromLanguage, toLanguage, voiceType) {
     return __awaiter(this, void 0, void 0, function () {
       var response, error_5;
@@ -414,7 +433,7 @@ var Translator = /** @class */function () {
   Translator.prototype.fetchTranslationBotId = function (participantId) {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function () {
-      var translatorId, botsDataResponse, json, err_1;
+      var translatorId, botsDataResponse, json, translatedTrack, err_1;
       return __generator(this, function (_c) {
         switch (_c.label) {
           case 0:
@@ -437,6 +456,16 @@ var Translator = /** @class */function () {
             _c.sent();
             return [3 /*break*/, 1];
           case 5:
+            this.translatorId = translatorId;
+            translatedTrack = this.participantTracks.get(translatorId);
+            if (translatedTrack) {
+              this.translatedTrack = translatedTrack;
+              if (this.onTranslatedTrackCallback) {
+                this.onTranslatedTrackCallback(translatedTrack);
+              }
+            } else {
+              console.debug("Translator: !!!!!!!!!!! Edge Case !!!!!!!!!!!");
+            }
             return [2 /*return*/, translatorId];
           case 6:
             err_1 = _c.sent();
@@ -450,8 +479,8 @@ var Translator = /** @class */function () {
   };
   Translator.prototype.onTranslatedTrackReady = function (callback) {
     this.onTranslatedTrackCallback = callback;
-    if (this.outputTrack) {
-      callback(this.outputTrack);
+    if (this.translatedTrack) {
+      callback(this.translatedTrack);
     }
   };
   Translator.prototype.onCaptions = function (callback) {
@@ -501,7 +530,7 @@ var Translator = /** @class */function () {
     return this.participantId;
   };
   Translator.prototype.getTranslatedTrack = function () {
-    return this.outputTrack;
+    return this.translatedTrack;
   };
   Translator.prototype.destroy = function () {
     if (this.callObject) {

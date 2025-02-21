@@ -1,5 +1,7 @@
 import Daily, {
   DailyCall,
+  DailyEventObjectAppMessage,
+  DailyEventObjectParticipant,
   DailyEventObjectParticipantLeft,
   DailyEventObjectTrack,
   DailyParticipantsObject,
@@ -187,9 +189,9 @@ export class Translator {
   private metadata?: Record<string, any>;
 
   private callObject: DailyCall | null = null;
-  private outputTrack: MediaStreamTrack | null = null;
+  private translatedTrack: MediaStreamTrack | null = null;
   private participantId = "";
-  private translatorId = "";
+  private participantTracks: Map<string, MediaStreamTrack> = new Map();
 
   private onTranslatedTrackCallback:
     | ((track: MediaStreamTrack) => void)
@@ -254,7 +256,7 @@ export class Translator {
         url: this.roomUrl,
         audioSource,
         videoSource: false,
-        subscribeToTracksAutomatically: true,
+        subscribeToTracksAutomatically: false,
         startAudioOff: audioSource === false,
       });
     } catch (error) {
@@ -287,33 +289,59 @@ export class Translator {
       throw error;
     }
 
-    // this should be done differently
-    // this.translatorId = await this.fetchTranslationBotId(this.participantId);
-    // ideally, we should check the bot id and subscribe to it
     this.callObject.on("track-started", (event: DailyEventObjectTrack) => {
-      console.debug("Translator: track-started", event);
       if (event?.track?.kind === "audio" && !event?.participant?.local) {
-        this.outputTrack = event.track;
-        if (this.onTranslatedTrackCallback) {
-          this.onTranslatedTrackCallback(this.outputTrack);
-        }
+        console.debug(
+          `CallClient: ${this.callObject.callClientId} , event:`,
+          event,
+        );
+        this.participantTracks.set(event.participant.session_id, event.track);
       }
     });
 
-    // Listen for caption events with filtering.
-    this.callObject.on("app-message", (event: any) => {
-      const data = event.data;
-      // Filter: ensure data exists, has the expected types, and is relevant to this translator.
-      if (
-        data &&
-        (data.type === "user-transcript" ||
-          data.type === "translation-transcript" ||
-          data.type === "user-interim-transcript") &&
-        data.participant_id === this.participantId
-      ) {
-        if (this.onCaptionsCallback) {
-          this.onCaptionsCallback(data);
+    this.callObject.on(
+      "participant-joined",
+      (event: DailyEventObjectParticipant) => {
+        let fromLangLabel = SUPPORTED_FROM_LANGUAGES.find(
+          (x) => x.langCode == this.fromLang,
+        ).label;
+        let toLangLabel = SUPPORTED_TO_LANGUAGES.find(
+          (x) => x.langCode == this.toLang,
+        ).label;
+        if (
+          !event?.participant?.local &&
+          event.participant.user_name.includes(
+            `Translator ${fromLangLabel} -> ${toLangLabel}`,
+          )
+        ) {
+          console.debug(
+            `Subscribing - CallClient: ${this.callObject.callClientId} , event:`,
+            event,
+          );
+          this.callObject.updateParticipant(event.participant.session_id, {
+            setSubscribedTracks: {
+              audio: true,
+            },
+          });
         }
+      },
+    );
+
+    this.callObject.on("app-message", (event: DailyEventObjectAppMessage) => {
+      const data = event.data;
+      if (!data?.type?.includes("transcript")) return;
+      let validTypes = [
+        "user-transcript",
+        "translation-transcript",
+        "user-interim-transcript",
+      ];
+      if (
+        validTypes.includes(data.type) &&
+        data.participant_id === this.participantId &&
+        data?.transcript &&
+        this.onCaptionsCallback
+      ) {
+        this.onCaptionsCallback(data);
       }
     });
 
@@ -321,19 +349,27 @@ export class Translator {
     this.callObject.on(
       "participant-left",
       (event: DailyEventObjectParticipantLeft) => {
-        if (!event.participant.local && this.outputTrack) {
-          this.outputTrack = null;
+        if (!event.participant.local && this.translatedTrack) {
+          this.translatedTrack = null;
           console.error(
             "Translator: Translation bot left; output track cleared",
           );
         }
       },
     );
+
+    this.fetchTranslationBotId(this.participantId)
+      .then((botId) => {
+        console.debug(
+          `Translator ready, Call Id:${this.callObject.callClientId} Translator Id: ${botId}`,
+        );
+      })
+      .catch((error) => {
+        console.error("Translator: Error fetching translator id", error);
+      });
   }
 
-  /**
-   * Registers the local participant
-   */
+  // Register local participant
   private async registerParticipant(participantId: string): Promise<void> {
     try {
       const response = await fetch(`${this.apiUrl}/participant`, {
@@ -353,9 +389,7 @@ export class Translator {
     }
   }
 
-  /**
-   * Adds a translation bot for the given participant.
-   */
+  // Adds a translation bot for the given participant
   private async addTranslationBot(
     roomUrl: string,
     participantId: string,
@@ -400,6 +434,15 @@ export class Translator {
         translatorId = json?.data?.[0]?.id; // For now, we only support one bot per participant.
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
+      let translatedTrack = this.participantTracks.get(translatorId);
+      if (translatedTrack) {
+        this.translatedTrack = translatedTrack;
+        if (this.onTranslatedTrackCallback) {
+          this.onTranslatedTrackCallback(translatedTrack);
+        }
+      } else {
+        console.debug("Translator: !!!!!!!!!!! Edge Case !!!!!!!!!!!");
+      }
       return translatorId;
     } catch (err) {
       console.error("Translator: Error fetching translator id", err);
@@ -411,8 +454,8 @@ export class Translator {
     callback: (translatedTrack: MediaStreamTrack) => void,
   ): void {
     this.onTranslatedTrackCallback = callback;
-    if (this.outputTrack) {
-      callback(this.outputTrack);
+    if (this.translatedTrack) {
+      callback(this.translatedTrack);
     }
   }
 
@@ -446,7 +489,7 @@ export class Translator {
   }
 
   public getTranslatedTrack(): MediaStreamTrack | null {
-    return this.outputTrack;
+    return this.translatedTrack;
   }
 
   public destroy(): void {

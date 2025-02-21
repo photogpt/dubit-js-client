@@ -15,6 +15,7 @@ export type TranslatorParams = {
     version?: string;
     inputAudioTrack: MediaStreamTrack | null;
     metadata?: Record<string, any>;
+    outputDeviceId?: string;
 };
 export type LanguageType = {
     langCode: string;
@@ -50,9 +51,11 @@ export declare class Translator {
     private inputAudioTrack;
     private metadata?;
     private callObject;
-    private outputTrack;
+    private translatedTrack;
     private participantId;
     private translatorId;
+    private participantTracks;
+    private outputDeviceId;
     private onTranslatedTrackCallback;
     private onCaptionsCallback;
     onDestroy?: () => void;
@@ -67,15 +70,10 @@ export declare class Translator {
         version?: string;
         inputAudioTrack: MediaStreamTrack | null;
         metadata?: Record<string, any>;
+        outputDeviceId?: string;
     });
     init(): Promise<void>;
-    /**
-     * Registers the local participant
-     */
     private registerParticipant;
-    /**
-     * Adds a translation bot for the given participant.
-     */
     private addTranslationBot;
     private fetchTranslationBotId;
     onTranslatedTrackReady(callback: (translatedTrack: MediaStreamTrack) => void): void;
