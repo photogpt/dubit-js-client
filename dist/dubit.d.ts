@@ -53,12 +53,12 @@ export declare class Translator {
     private callObject;
     private translatedTrack;
     private participantId;
-    private translatorId;
     private participantTracks;
     private outputDeviceId;
     private onTranslatedTrackCallback;
     private onCaptionsCallback;
     onDestroy?: () => void;
+    getInstanceId: () => string;
     constructor(params: {
         instanceId: string;
         roomUrl: string;
@@ -75,7 +75,6 @@ export declare class Translator {
     init(): Promise<void>;
     private registerParticipant;
     private addTranslationBot;
-    private fetchTranslationBotId;
     onTranslatedTrackReady(callback: (translatedTrack: MediaStreamTrack) => void): void;
     onCaptions(callback: (caption: CaptionEvent) => void): void;
     updateInputTrack(newInputTrack: MediaStreamTrack | null): Promise<void>;

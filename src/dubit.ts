@@ -26,6 +26,7 @@ export type TranslatorParams = {
   version?: string;
   inputAudioTrack: MediaStreamTrack | null;
   metadata?: Record<string, any>;
+  outputDeviceId?: string;
 };
 
 export type LanguageType = {
@@ -192,6 +193,7 @@ export class Translator {
   private translatedTrack: MediaStreamTrack | null = null;
   private participantId = "";
   private participantTracks: Map<string, MediaStreamTrack> = new Map();
+  private outputDeviceId: string | null = null;
 
   private onTranslatedTrackCallback:
     | ((track: MediaStreamTrack) => void)
@@ -200,6 +202,7 @@ export class Translator {
 
   // Called upon destroy to allow the parent to clean up references.
   public onDestroy?: () => void;
+  public getInstanceId = () => this.instanceId;
 
   constructor(params: {
     instanceId: string;
@@ -212,6 +215,7 @@ export class Translator {
     version?: string;
     inputAudioTrack: MediaStreamTrack | null;
     metadata?: Record<string, any>;
+    outputDeviceId?: string;
   }) {
     this.instanceId = params.instanceId;
     this.roomUrl = params.roomUrl;
@@ -225,6 +229,7 @@ export class Translator {
     this.metadata = params.metadata
       ? safeSerializeMetadata(params.metadata)
       : {};
+    this.outputDeviceId = params.outputDeviceId;
   }
 
   public async init(): Promise<void> {
@@ -233,13 +238,6 @@ export class Translator {
         allowMultipleCallInstances: true,
         videoSource: false,
         subscribeToTracksAutomatically: false,
-        inputSettings: {
-          audio: {
-            processor: {
-              type: "noise-cancellation",
-            },
-          },
-        },
       });
     } catch (error) {
       console.error("Translator: Failed to create Daily call object", error);
@@ -258,6 +256,13 @@ export class Translator {
         videoSource: false,
         subscribeToTracksAutomatically: false,
         startAudioOff: audioSource === false,
+        inputSettings: {
+          audio: {
+            processor: {
+              type: "noise-cancellation",
+            },
+          },
+        },
       });
     } catch (error) {
       console.error("Translator: Failed to join the Daily room", error);
@@ -290,26 +295,49 @@ export class Translator {
     }
 
     this.callObject.on("track-started", (event: DailyEventObjectTrack) => {
-      if (event?.track?.kind === "audio" && !event?.participant?.local) {
+      let fromLangLabel = SUPPORTED_FROM_LANGUAGES.find(
+        (x) => x.langCode == this.fromLang,
+      ).label;
+      let toLangLabel = SUPPORTED_TO_LANGUAGES.find(
+        (x) => x.langCode == this.toLang,
+      ).label;
+
+      // TODO: add better identifier like some kind of id in metadata
+      if (
+        event.track.kind === "audio" &&
+        !event?.participant?.local &&
+        event.participant.user_name.includes(
+          `Translator ${fromLangLabel} -> ${toLangLabel}`,
+        )
+      ) {
         console.debug(
           `CallClient: ${this.callObject.callClientId} , event:`,
           event,
         );
-        this.participantTracks.set(event.participant.session_id, event.track);
+
+        if (this.onTranslatedTrackCallback && event.track) {
+          this.onTranslatedTrackCallback(event.track);
+          this.translatedTrack = event.track;
+        }
       }
     });
 
     this.callObject.on(
       "participant-joined",
-      (event: DailyEventObjectParticipant) => {
+      async (event: DailyEventObjectParticipant) => {
+        // console.debug(
+        //   `Whoever Joins - CallClient: ${this.callObject.callClientId} , to: ${event.participant.user_name} , but setting our Output Device Id to : ${this.outputDeviceId}`,
+        // );
         let fromLangLabel = SUPPORTED_FROM_LANGUAGES.find(
           (x) => x.langCode == this.fromLang,
         ).label;
         let toLangLabel = SUPPORTED_TO_LANGUAGES.find(
           (x) => x.langCode == this.toLang,
         ).label;
+        if (event?.participant?.local) return;
+
+        // TODO: add better identifier like some kind of id in metadata
         if (
-          !event?.participant?.local &&
           event.participant.user_name.includes(
             `Translator ${fromLangLabel} -> ${toLangLabel}`,
           )
@@ -323,6 +351,7 @@ export class Translator {
               audio: true,
             },
           });
+        } else {
         }
       },
     );
@@ -358,15 +387,15 @@ export class Translator {
       },
     );
 
-    this.fetchTranslationBotId(this.participantId)
-      .then((botId) => {
-        console.debug(
-          `Translator ready, Call Id:${this.callObject.callClientId} Translator Id: ${botId}`,
-        );
-      })
-      .catch((error) => {
-        console.error("Translator: Error fetching translator id", error);
-      });
+    // this.fetchTranslationBotId(this.participantId)
+    //   .then((botId) => {
+    //     console.debug(
+    //       `Translator ready, Call Id:${this.callObject.callClientId} Translator Id: ${botId}`,
+    //     );
+    //   })
+    //   .catch((error) => {
+    //     console.error("Translator: Error fetching translator id", error);
+    //   });
   }
 
   // Register local participant
@@ -423,32 +452,32 @@ export class Translator {
     }
   }
 
-  private async fetchTranslationBotId(participantId: string): Promise<string> {
-    try {
-      let translatorId = "";
-      while (!translatorId) {
-        let botsDataResponse = await fetch(
-          `${this.apiUrl}/participant/${participantId}/bot`,
-        );
-        let json = await botsDataResponse.json();
-        translatorId = json?.data?.[0]?.id; // For now, we only support one bot per participant.
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-      let translatedTrack = this.participantTracks.get(translatorId);
-      if (translatedTrack) {
-        this.translatedTrack = translatedTrack;
-        if (this.onTranslatedTrackCallback) {
-          this.onTranslatedTrackCallback(translatedTrack);
-        }
-      } else {
-        console.debug("Translator: !!!!!!!!!!! Edge Case !!!!!!!!!!!");
-      }
-      return translatorId;
-    } catch (err) {
-      console.error("Translator: Error fetching translator id", err);
-      throw err;
-    }
-  }
+  // private async fetchTranslationBotId(participantId: string): Promise<string> {
+  //   try {
+  //     let translatorId = "";
+  //     while (!translatorId) {
+  //       let botsDataResponse = await fetch(
+  //         `${this.apiUrl}/participant/${participantId}/bot`,
+  //       );
+  //       let json = await botsDataResponse.json();
+  //       translatorId = json?.data?.[0]?.id; // For now, we only support one bot per participant.
+  //       await new Promise((resolve) => setTimeout(resolve, 1000));
+  //     }
+  //     let translatedTrack = this.participantTracks.get(translatorId);
+  //     if (translatedTrack) {
+  //       this.translatedTrack = translatedTrack;
+  //       if (this.onTranslatedTrackCallback) {
+  //         this.onTranslatedTrackCallback(translatedTrack);
+  //       }
+  //     } else {
+  //       console.debug("Translator: !!!!!!!!!!! Edge Case !!!!!!!!!!!");
+  //     }
+  //     return translatorId;
+  //   } catch (err) {
+  //     console.error("Translator: Error fetching translator id", err);
+  //     throw err;
+  //   }
+  // }
 
   public onTranslatedTrackReady(
     callback: (translatedTrack: MediaStreamTrack) => void,
