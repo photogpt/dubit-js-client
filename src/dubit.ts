@@ -325,9 +325,6 @@ export class Translator {
     this.callObject.on(
       "participant-joined",
       async (event: DailyEventObjectParticipant) => {
-        // console.debug(
-        //   `Whoever Joins - CallClient: ${this.callObject.callClientId} , to: ${event.participant.user_name} , but setting our Output Device Id to : ${this.outputDeviceId}`,
-        // );
         let fromLangLabel = SUPPORTED_FROM_LANGUAGES.find(
           (x) => x.langCode == this.fromLang,
         ).label;
@@ -386,16 +383,6 @@ export class Translator {
         }
       },
     );
-
-    // this.fetchTranslationBotId(this.participantId)
-    //   .then((botId) => {
-    //     console.debug(
-    //       `Translator ready, Call Id:${this.callObject.callClientId} Translator Id: ${botId}`,
-    //     );
-    //   })
-    //   .catch((error) => {
-    //     console.error("Translator: Error fetching translator id", error);
-    //   });
   }
 
   // Register local participant
@@ -451,33 +438,6 @@ export class Translator {
       throw error;
     }
   }
-
-  // private async fetchTranslationBotId(participantId: string): Promise<string> {
-  //   try {
-  //     let translatorId = "";
-  //     while (!translatorId) {
-  //       let botsDataResponse = await fetch(
-  //         `${this.apiUrl}/participant/${participantId}/bot`,
-  //       );
-  //       let json = await botsDataResponse.json();
-  //       translatorId = json?.data?.[0]?.id; // For now, we only support one bot per participant.
-  //       await new Promise((resolve) => setTimeout(resolve, 1000));
-  //     }
-  //     let translatedTrack = this.participantTracks.get(translatorId);
-  //     if (translatedTrack) {
-  //       this.translatedTrack = translatedTrack;
-  //       if (this.onTranslatedTrackCallback) {
-  //         this.onTranslatedTrackCallback(translatedTrack);
-  //       }
-  //     } else {
-  //       console.debug("Translator: !!!!!!!!!!! Edge Case !!!!!!!!!!!");
-  //     }
-  //     return translatorId;
-  //   } catch (err) {
-  //     console.error("Translator: Error fetching translator id", err);
-  //     throw err;
-  //   }
-  // }
 
   public onTranslatedTrackReady(
     callback: (translatedTrack: MediaStreamTrack) => void,

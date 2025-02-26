@@ -442,32 +442,6 @@ var Translator = /** @class */function () {
       });
     });
   };
-  // private async fetchTranslationBotId(participantId: string): Promise<string> {
-  //   try {
-  //     let translatorId = "";
-  //     while (!translatorId) {
-  //       let botsDataResponse = await fetch(
-  //         `${this.apiUrl}/participant/${participantId}/bot`,
-  //       );
-  //       let json = await botsDataResponse.json();
-  //       translatorId = json?.data?.[0]?.id; // For now, we only support one bot per participant.
-  //       await new Promise((resolve) => setTimeout(resolve, 1000));
-  //     }
-  //     let translatedTrack = this.participantTracks.get(translatorId);
-  //     if (translatedTrack) {
-  //       this.translatedTrack = translatedTrack;
-  //       if (this.onTranslatedTrackCallback) {
-  //         this.onTranslatedTrackCallback(translatedTrack);
-  //       }
-  //     } else {
-  //       console.debug("Translator: !!!!!!!!!!! Edge Case !!!!!!!!!!!");
-  //     }
-  //     return translatorId;
-  //   } catch (err) {
-  //     console.error("Translator: Error fetching translator id", err);
-  //     throw err;
-  //   }
-  // }
   Translator.prototype.onTranslatedTrackReady = function (callback) {
     this.onTranslatedTrackCallback = callback;
     if (this.translatedTrack) {
