@@ -2,138 +2,128 @@
 <html lang="en">
 
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Dubit Translation Demo</title>
-	<script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script>
-	<script type="module" src="./dist/dubit.umd.js"></script>
-	<script type="module" src="dubit-demo.js" defer></script>
-	<style>
-		body {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			margin: 0;
-			padding: 20px;
-			font-family: Arial, sans-serif;
-			background-color: #f5f5f5;
-		}
-
-		#startCall {
-			width: 100%;
-			text-align: center;
-			margin-bottom: 20px;
-			padding: 10px 20px;
-			background-color: #4CAF50;
-			color: white;
-			border: none;
-			border-radius: 4px;
-			cursor: pointer;
-		}
-
-		#control-center {
-			width: 100%;
-			display: flex;
-			flex-direction: row;
-			justify-content: space-between;
-			padding: 0 4rem;
-		}
-
-		#controls-1,
-		#controls-2 {
-			width: 50%;
-			padding: 20px;
-			box-sizing: border-box;
-			background-color: white;
-			border-radius: 4px;
-			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-			display: flex;
-			flex-direction: column;
-			justify-content: center;
-		}
-
-
-		#log {
-			clear: both;
-			width: 100%;
-			margin-top: 20px;
-			padding: 20px;
-			background-color: white;
-			border-radius: 4px;
-			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-		}
-
-		h1,
-		h3 {
-			text-align: center;
-			color: #333;
-		}
-
-		label {
-			display: block;
-			margin-bottom: 5px;
-			font-weight: bold;
-		}
-
-		select,
-		button {
-			margin-bottom: 10px;
-			padding: 5px;
-			border-radius: 4px;
-			border: 1px solid #ccc;
-		}
-	</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dubit Translation Demo</title>
+  <script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script>
+  <script type="module" src="./dist/dubit.umd.js"></script>
+  <script type="module" src="dubit-demo.js" defer></script>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
 </head>
 
-<body>
-	<h1>Dubit Translation Demo</h1>
-	<button id="startCall">Start Call</button>
-	<div id="control-center">
-		<div id="controls-1" style="display: none;">
-			<h3>Configure Translator 1 </h3>
-			<div>
-				<label for="audioInput-1">Select Audio Input Device:</label>
-				<select id="audioInput-1"></select>
-			</div>
-			<div>
-				<label for="audioOutput-1">Select Audio Output Device:</label>
-				<select id="audioOutput-1"></select>
-			</div>
-			<div>
-				<label for="sourceLang-1">Source Language:</label>
-				<select id="sourceLang-1"></select>
-			</div>
-			<div>
-				<label for="targetLang-1">Target Language:</label>
-				<select id="targetLang-1"></select>
-			</div>
-			<button id="addTranslator-1">Add Translator</button>
-			<div id="interimCaptions-1"></div>
-		</div>
+<body class="bg-gray-50 min-h-screen p-4 md:p-8">
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Dubit Translation Demo</h1>
+      <p class="text-gray-600 max-w-2xl mx-auto">Experience real-time speech translation across different languages and
+        audio devices.</p>
+    </div>
 
-		<div id="controls-2" style="display: none;">
-			<h3>Configure Translator 2</h3>
-			<div>
-				<label for="audioInput-2">Select Audio Input Device:</label>
-				<select id="audioInput-2"></select>
-			</div>
-			<div>
-				<label for="audioOutput-2">Select Audio Output Device:</label>
-				<select id="audioOutput-2"></select>
-			</div>
-			<div>
-				<label for="sourceLang-2">Source Language:</label>
-				<select id="sourceLang-2"></select>
-			</div>
-			<div>
-				<label for="targetLang-2">Target Language:</label>
-				<select id="targetLang-2"></select>
-			</div>
-			<button id="addTranslator-2">Add Translator</button>
-			<div id="interimCaptions-2"></div>
-		</div>
-	</div>
-	<div id="log"></div>
+    <!-- Start Call Button -->
+    <div class="mb-8 text-center">
+      <button id="startCall"
+        class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-8 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:-translate-y-1 hover:shadow-lg w-full md:w-auto">
+        Start Call
+      </button>
+    </div>
+
+    <!-- Control Center -->
+    <div id="control-center" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <!-- Translator 1 -->
+      <div id="controls-1" class="hidden bg-white rounded-xl shadow-md p-6 border border-gray-100 flex-col">
+        <div class="mb-6">
+          <h3 class="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Translator 1</h3>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label for="audioInput-1" class="block text-sm font-medium text-gray-700 mb-1">Audio Input Device</label>
+            <select id="audioInput-1"
+              class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5"></select>
+          </div>
+
+          <div>
+            <label for="audioOutput-1" class="block text-sm font-medium text-gray-700 mb-1">Audio Output Device</label>
+            <select id="audioOutput-1"
+              class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5"></select>
+          </div>
+
+          <div>
+            <label for="sourceLang-1" class="block text-sm font-medium text-gray-700 mb-1">Source Language</label>
+            <select id="sourceLang-1"
+              class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5"></select>
+          </div>
+
+          <div>
+            <label for="targetLang-1" class="block text-sm font-medium text-gray-700 mb-1">Target Language</label>
+            <select id="targetLang-1"
+              class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5"></select>
+          </div>
+
+          <button id="addTranslator-1"
+            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 ease-in-out">
+            Start Translation
+          </button>
+
+          <div id="interimCaptions-1" class="mt-4 p-3 bg-gray-50 rounded-lg text-gray-700 min-h-[60px] text-sm"></div>
+        </div>
+      </div>
+
+      <!-- Translator 2 -->
+      <div id="controls-2" class="hidden bg-white rounded-xl shadow-md p-6 border border-gray-100 flex-col">
+        <div class="mb-6">
+          <h3 class="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Translator 2</h3>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label for="audioInput-2" class="block text-sm font-medium text-gray-700 mb-1">Audio Input Device</label>
+            <select id="audioInput-2"
+              class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5"></select>
+          </div>
+
+          <div>
+            <label for="audioOutput-2" class="block text-sm font-medium text-gray-700 mb-1">Audio Output Device</label>
+            <select id="audioOutput-2"
+              class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5"></select>
+          </div>
+
+          <div>
+            <label for="sourceLang-2" class="block text-sm font-medium text-gray-700 mb-1">Source Language</label>
+            <select id="sourceLang-2"
+              class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5"></select>
+          </div>
+
+          <div>
+            <label for="targetLang-2" class="block text-sm font-medium text-gray-700 mb-1">Target Language</label>
+            <select id="targetLang-2"
+              class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5"></select>
+          </div>
+
+          <button id="addTranslator-2"
+            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 ease-in-out">
+            Start Translation
+          </button>
+
+          <div id="interimCaptions-2" class="mt-4 p-3 bg-gray-50 rounded-lg text-gray-700 min-h-[60px] text-sm"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log Section -->
+    <div id="log"
+      class="bg-white rounded-xl shadow-md p-6 border border-gray-100 min-h-[200px] max-h-[400px] overflow-y-auto">
+      <h3 class="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Event Log</h3>
+      <div class="text-gray-600 text-sm"></div>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-8 text-center text-gray-500 text-sm">
+      <p>Dubit Translation Demo - Multi-device real-time translation</p>
+    </div>
+  </div>
 </body>
 
 </html>

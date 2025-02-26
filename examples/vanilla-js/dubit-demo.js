@@ -1,23 +1,21 @@
 const token = "sk_36de4f9a-3c1d-4ea5-9ddd-a791ee396692";
 
 document.getElementById("startCall").addEventListener("click", startCall);
-document
-  .getElementById("addTranslator-1")
-  .addEventListener("click", addTranslator1);
-document
-  .getElementById("addTranslator-2")
-  .addEventListener("click", addTranslator2);
+document.getElementById("addTranslator-1").addEventListener("click", () => addTranslator("1"));
+document.getElementById("addTranslator-2").addEventListener("click", () => addTranslator("2"));
 
-let dubitInstance = null; // Global instance
+let dubitInstance = null;
 
+// Start the call and initialize UI
 async function startCall() {
   document.getElementById("startCall").disabled = true;
   const logDiv = document.getElementById("log");
   logDiv.innerHTML = "<p>Starting call...</p>";
 
   try {
-    // Assume 'token' is defined globally.
     dubitInstance = await Dubit.createNewInstance({ token });
+
+    window._dubit = dubitInstance;
     logDiv.innerHTML += "<p>Call started!</p>";
     document.getElementById("controls-1").style.display = "flex";
     document.getElementById("controls-2").style.display = "flex";
@@ -30,37 +28,22 @@ async function startCall() {
   }
 }
 
-async function addTranslator1() {
-  await addTranslator("1");
-}
-
-async function addTranslator2() {
-  await addTranslator("2");
-}
-
+// Add a translator with specific language pairs and devices
 async function addTranslator(translatorId) {
   if (!dubitInstance) {
     console.error("Call not started yet.");
     return;
   }
 
-  const audioInputSelect = document.getElementById(
-    `audioInput-${translatorId}`,
-  );
-  const audioOutputSelect = document.getElementById(
-    `audioOutput-${translatorId}`,
-  );
-  const sourceLangSelect = document.getElementById(
-    `sourceLang-${translatorId}`,
-  );
-  const targetLangSelect = document.getElementById(
-    `targetLang-${translatorId}`,
-  );
+  // Get UI elements
+  const audioInputSelect = document.getElementById(`audioInput-${translatorId}`);
+  const audioOutputSelect = document.getElementById(`audioOutput-${translatorId}`);
+  const sourceLangSelect = document.getElementById(`sourceLang-${translatorId}`);
+  const targetLangSelect = document.getElementById(`targetLang-${translatorId}`);
   const logDiv = document.getElementById("log");
-  const interimCaptionsDiv = document.getElementById(
-    `interimCaptions-${translatorId}`,
-  );
+  const interimCaptionsDiv = document.getElementById(`interimCaptions-${translatorId}`);
 
+  // Get selected values
   const deviceId = audioInputSelect.value;
   const outputDeviceId = audioOutputSelect.value;
   const fromLang = sourceLangSelect.value;
@@ -69,12 +52,12 @@ async function addTranslator(translatorId) {
   logDiv.innerHTML += `<p>Adding translator ${translatorId}: ${fromLang} → ${toLang}</p>`;
 
   try {
-    // Get the audio track from the selected input device.
+    // exact avoids browser's fallback logic, we explicitly need certain device
+    // if the device we want is not available then we should fail
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { deviceId: { exact: deviceId } },
     });
     const audioTrack = stream.getAudioTracks()[0];
-    console.log("Obtained audioTrack for translator", translatorId, audioTrack);
 
     const translator = await dubitInstance.addTranslator({
       fromLang,
@@ -84,19 +67,14 @@ async function addTranslator(translatorId) {
       metadata: { demo: true },
     });
 
-    /**
-     * Handles the translatedTrackReady event from the Dubit translator
-     */
     translator.onTranslatedTrackReady((track) => {
-      logDiv.innerHTML += `<p>Translated track ready for translator ${translatorId}! Routing to output device: ${outputDeviceId}</p>`;
-      // Ensure track is enabled
-      track.enabled = true;
-      console.log(`Track enabled state (${translatorId}):`, track.enabled);
+      logDiv.innerHTML += `<p>Translated track ready for - ${translatorId}! Routing to: ${outputDeviceId}</p>`;
 
-      // Create a unique ID for this routing
+      track.enabled = true;
       const elementId = `audio-${translatorId}-${translator.getInstanceId()}`;
 
-      // Route the track to the selected output device
+      // NOTE: it's important to use dubit's provided function for audio routing
+      // to avoid WebRTC track mixing issue by using the WebAudio API
       Dubit.routeTrackToDevice(track, outputDeviceId, elementId);
 
       logDiv.innerHTML += `<p>Audio routing established for translator ${translatorId} to device ${outputDeviceId}</p>`;
@@ -133,26 +111,14 @@ async function populateAudioDevices() {
 
     devices.forEach((device) => {
       if (device.kind === "audioinput") {
-        const option1 = new Option(
-          device.label || `Mic ${audioInputSelect1.length + 1}`,
-          device.deviceId,
-        );
-        const option2 = new Option(
-          device.label || `Mic ${audioInputSelect2.length + 1}`,
-          device.deviceId,
-        );
+        const option1 = new Option(device.label || `Mic ${audioInputSelect1.length + 1}`, device.deviceId);
+        const option2 = new Option(device.label || `Mic ${audioInputSelect2.length + 1}`, device.deviceId);
         audioInputSelect1.appendChild(option1);
         audioInputSelect2.appendChild(option2);
       }
       if (device.kind === "audiooutput") {
-        const option1 = new Option(
-          device.label || `Speaker ${audioOutputSelect1.length + 1}`,
-          device.deviceId,
-        );
-        const option2 = new Option(
-          device.label || `Speaker ${audioOutputSelect2.length + 1}`,
-          device.deviceId,
-        );
+        const option1 = new Option(device.label || `Speaker ${audioOutputSelect1.length + 1}`, device.deviceId);
+        const option2 = new Option(device.label || `Speaker ${audioOutputSelect2.length + 1}`, device.deviceId);
         audioOutputSelect1.appendChild(option1);
         audioOutputSelect2.appendChild(option2);
       }
@@ -171,6 +137,7 @@ function populateLanguages() {
   try {
     const fromLanguages = Dubit.getSupportedFromLanguages();
     const toLanguages = Dubit.getSupportedToLanguages();
+
     sourceLangSelect1.innerHTML = "";
     sourceLangSelect2.innerHTML = "";
     targetLangSelect1.innerHTML = "";
@@ -180,11 +147,13 @@ function populateLanguages() {
       sourceLangSelect1.appendChild(new Option(lang.label, lang.langCode));
       sourceLangSelect2.appendChild(new Option(lang.label, lang.langCode));
     });
+
     toLanguages.forEach((lang) => {
       targetLangSelect1.appendChild(new Option(lang.label, lang.langCode));
       targetLangSelect2.appendChild(new Option(lang.label, lang.langCode));
     });
-    // Set default language values.
+
+    // Set default language values
     sourceLangSelect1.value = "hi";
     targetLangSelect1.value = "en-US";
     sourceLangSelect2.value = "en-US";
