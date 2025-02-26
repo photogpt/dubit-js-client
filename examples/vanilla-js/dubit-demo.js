@@ -1,4 +1,4 @@
-const token = "sk_36de4f9a-3c1d-4ea5-9ddd-a791ee396692";
+const token = import.meta.env.VITE_DUBIT_API_KEY;
 
 document.getElementById("startCall").addEventListener("click", startCall);
 document.getElementById("addTranslator-1").addEventListener("click", () => addTranslator("1"));
