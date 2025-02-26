@@ -83,6 +83,11 @@ export declare class Translator {
     destroy(): void;
 }
 /**
+ * Routes a WebRTC audio track to a specific output device using WebAudio
+ * This implementation avoids the WebRTC track mixing issue by using the WebAudio API
+ */
+export declare function routeTrackToDevice(track: MediaStreamTrack, outputDeviceId: string, elementId: string): object;
+/**
  * Represents a version object with a version string and a label.
  *
  * @example

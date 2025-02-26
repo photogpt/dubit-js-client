@@ -533,6 +533,113 @@ export class Translator {
   }
 }
 
+const audioContexts = new Map();
+const activeRoutings = new Map();
+
+/**
+ * Routes a WebRTC audio track to a specific output device using WebAudio
+ * This implementation avoids the WebRTC track mixing issue by using the WebAudio API
+ */
+export function routeTrackToDevice(
+  track: MediaStreamTrack,
+  outputDeviceId: string,
+  elementId: string,
+): object {
+  console.log(`Routing track ${track.id} to device ${outputDeviceId}`);
+  if (!elementId) {
+    elementId = `audio-${track.id}`;
+  }
+
+  // Clean up any existing routing for this element ID
+  if (activeRoutings.has(elementId)) {
+    const oldRouting = activeRoutings.get(elementId);
+    oldRouting.stop();
+    activeRoutings.delete(elementId);
+    console.log(`Cleaned up previous routing for ${elementId}`);
+  }
+
+  // Create or get AudioContext for this output device
+  let audioContext: AudioContext;
+  if (audioContexts.has(outputDeviceId)) {
+    audioContext = audioContexts.get(outputDeviceId);
+    console.log(`Reusing existing AudioContext for device ${outputDeviceId}`);
+  } else {
+    audioContext = new AudioContext();
+    audioContexts.set(outputDeviceId, audioContext);
+    console.log(`Created new AudioContext for device ${outputDeviceId}`);
+  }
+
+  // Resume AudioContext if suspended (autoplay policy)
+  if (audioContext.state === "suspended") {
+    audioContext
+      .resume()
+      .then(() =>
+        console.log(`AudioContext resumed for device ${outputDeviceId}`),
+      )
+      .catch((err) => console.error(`Failed to resume AudioContext: ${err}`));
+  }
+
+  const mediaStream = new MediaStream([track]);
+  const sourceNode = audioContext.createMediaStreamSource(mediaStream);
+  console.log(`Created source node for track ${track.id}`);
+  const destinationNode = audioContext.destination;
+  sourceNode.connect(destinationNode);
+  console.log(
+    `Connected track ${track.id} to destination for device ${outputDeviceId}`,
+  );
+
+  // If the AudioContext API supports setSinkId directly, use it
+  if ("setSinkId" in AudioContext.prototype) {
+    audioContext //@ts-ignore
+      .setSinkId(outputDeviceId)
+      .then(() =>
+        console.log(`Set sinkId ${outputDeviceId} on AudioContext directly`),
+      )
+      .catch((err: DOMException) =>
+        console.error(`Failed to set sinkId on AudioContext: ${err}`),
+      );
+  }
+
+  // Create a hidden audio element that will pull from the WebRTC stream
+  // This is necessary to get the WebRTC subsystem to deliver the audio to WebAudio
+  const pullElement = document.createElement("audio");
+  pullElement.id = `pull-${elementId}`;
+  pullElement.srcObject = mediaStream;
+  pullElement.style.display = "none";
+  pullElement.muted = true; // Don't actually play through the default device
+  document.body.appendChild(pullElement);
+
+  // Start pulling audio through the element
+  pullElement
+    .play()
+    .then(() => console.log(`Pull element started for track ${track.id}`))
+    .catch((err) => console.error(`Failed to start pull element: ${err}`));
+
+  // Create routing info object with stop method
+  const routingInfo = {
+    context: audioContext,
+    sourceNode: sourceNode,
+    pullElement: pullElement,
+    stop: function () {
+      this.sourceNode.disconnect();
+      this.pullElement.pause();
+      this.pullElement.srcObject = null;
+      if (this.pullElement.parentNode) {
+        document.body.removeChild(this.pullElement);
+      }
+
+      console.log(
+        `Stopped routing track ${track.id} to device ${outputDeviceId}`,
+      );
+    },
+  };
+
+  // Store the routing for future cleanup
+  activeRoutings.set(elementId, routingInfo);
+
+  return routingInfo;
+}
+
 function safeSerializeMetadata(
   metadata: Record<string, any>,
 ): Record<string, any> {

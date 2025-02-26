@@ -306,37 +306,6 @@
                 console.error("Translator: Error registering participant or adding bot", error_3);
                 throw error_3;
               case 9:
-                // this.callObject.on(
-                //   "participant-updated",
-                //   (event: DailyEventObjectParticipant) => {
-                //     let fromLangLabel = SUPPORTED_FROM_LANGUAGES.find(
-                //       (x) => x.langCode == this.fromLang,
-                //     ).label;
-                //     let toLangLabel = SUPPORTED_TO_LANGUAGES.find(
-                //       (x) => x.langCode == this.toLang,
-                //     ).label;
-                //     if (
-                //       !event?.participant?.local &&
-                //       event.participant.user_name.includes(
-                //         `Translator ${fromLangLabel} -> ${toLangLabel}`,
-                //       )
-                //     ) {
-                //       console.debug(
-                //         `CallClient: ${this.callObject.callClientId} , event:`,
-                //         event,
-                //       );
-                //       if (
-                //         this.onTranslatedTrackCallback &&
-                //         event.participant.tracks.audio.track
-                //       ) {
-                //         this.onTranslatedTrackCallback(
-                //           event.participant.tracks.audio.track,
-                //         );
-                //         this.translatedTrack = event.participant.tracks.audio.track;
-                //       }
-                //     }
-                //   },
-                // );
                 this.callObject.on("track-started", function (event) {
                   var _a;
                   var fromLangLabel = SUPPORTED_FROM_LANGUAGES.find(function (x) {
@@ -345,6 +314,7 @@
                   var toLangLabel = SUPPORTED_TO_LANGUAGES.find(function (x) {
                     return x.langCode == _this.toLang;
                   }).label;
+                  // TODO: add better identifier like some kind of id in metadata
                   if (event.track.kind === "audio" && !((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) && event.participant.user_name.includes("Translator ".concat(fromLangLabel, " -> ").concat(toLangLabel))) {
                     console.debug("CallClient: ".concat(_this.callObject.callClientId, " , event:"), event);
                     if (_this.onTranslatedTrackCallback && event.track) {
@@ -567,6 +537,90 @@
       };
       return Translator;
     }();
+    var audioContexts = new Map();
+    var activeRoutings = new Map();
+    /**
+     * Routes a WebRTC audio track to a specific output device using WebAudio
+     * This implementation avoids the WebRTC track mixing issue by using the WebAudio API
+     */
+    function routeTrackToDevice(track, outputDeviceId, elementId) {
+      console.log("Routing track ".concat(track.id, " to device ").concat(outputDeviceId));
+      if (!elementId) {
+        elementId = "audio-".concat(track.id);
+      }
+      // Clean up any existing routing for this element ID
+      if (activeRoutings.has(elementId)) {
+        var oldRouting = activeRoutings.get(elementId);
+        oldRouting.stop();
+        activeRoutings.delete(elementId);
+        console.log("Cleaned up previous routing for ".concat(elementId));
+      }
+      // Create or get AudioContext for this output device
+      var audioContext;
+      if (audioContexts.has(outputDeviceId)) {
+        audioContext = audioContexts.get(outputDeviceId);
+        console.log("Reusing existing AudioContext for device ".concat(outputDeviceId));
+      } else {
+        audioContext = new AudioContext();
+        audioContexts.set(outputDeviceId, audioContext);
+        console.log("Created new AudioContext for device ".concat(outputDeviceId));
+      }
+      // Resume AudioContext if suspended (autoplay policy)
+      if (audioContext.state === "suspended") {
+        audioContext.resume().then(function () {
+          return console.log("AudioContext resumed for device ".concat(outputDeviceId));
+        }).catch(function (err) {
+          return console.error("Failed to resume AudioContext: ".concat(err));
+        });
+      }
+      var mediaStream = new MediaStream([track]);
+      var sourceNode = audioContext.createMediaStreamSource(mediaStream);
+      console.log("Created source node for track ".concat(track.id));
+      var destinationNode = audioContext.destination;
+      sourceNode.connect(destinationNode);
+      console.log("Connected track ".concat(track.id, " to destination for device ").concat(outputDeviceId));
+      // If the AudioContext API supports setSinkId directly, use it
+      if ("setSinkId" in AudioContext.prototype) {
+        audioContext //@ts-ignore
+        .setSinkId(outputDeviceId).then(function () {
+          return console.log("Set sinkId ".concat(outputDeviceId, " on AudioContext directly"));
+        }).catch(function (err) {
+          return console.error("Failed to set sinkId on AudioContext: ".concat(err));
+        });
+      }
+      // Create a hidden audio element that will pull from the WebRTC stream
+      // This is necessary to get the WebRTC subsystem to deliver the audio to WebAudio
+      var pullElement = document.createElement("audio");
+      pullElement.id = "pull-".concat(elementId);
+      pullElement.srcObject = mediaStream;
+      pullElement.style.display = "none";
+      pullElement.muted = true; // Don't actually play through the default device
+      document.body.appendChild(pullElement);
+      // Start pulling audio through the element
+      pullElement.play().then(function () {
+        return console.log("Pull element started for track ".concat(track.id));
+      }).catch(function (err) {
+        return console.error("Failed to start pull element: ".concat(err));
+      });
+      // Create routing info object with stop method
+      var routingInfo = {
+        context: audioContext,
+        sourceNode: sourceNode,
+        pullElement: pullElement,
+        stop: function () {
+          this.sourceNode.disconnect();
+          this.pullElement.pause();
+          this.pullElement.srcObject = null;
+          if (this.pullElement.parentNode) {
+            document.body.removeChild(this.pullElement);
+          }
+          console.log("Stopped routing track ".concat(track.id, " to device ").concat(outputDeviceId));
+        }
+      };
+      // Store the routing for future cleanup
+      activeRoutings.set(elementId, routingInfo);
+      return routingInfo;
+    }
     function safeSerializeMetadata(metadata) {
       try {
         JSON.stringify(metadata);
@@ -1207,5 +1261,6 @@
     exports.getCompleteTranscript = getCompleteTranscript;
     exports.getSupportedFromLanguages = getSupportedFromLanguages;
     exports.getSupportedToLanguages = getSupportedToLanguages;
+    exports.routeTrackToDevice = routeTrackToDevice;
 
 }));

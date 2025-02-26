@@ -10,95 +10,6 @@ document
 
 let dubitInstance = null; // Global instance
 
-// Global AudioContext cache to ensure we have only one per device
-const audioContexts = new Map();
-
-function routeTrackToDevice(track, outputDeviceId, elementId) {
-  console.log(`Routing track ${track.id} to device ${outputDeviceId}`);
-
-  // Create or get AudioContext for this output device
-  let audioContext;
-  if (audioContexts.has(outputDeviceId)) {
-    audioContext = audioContexts.get(outputDeviceId);
-    console.log(`Reusing existing AudioContext for device ${outputDeviceId}`);
-  } else {
-    audioContext = new AudioContext({
-      // Set the sinkId if the browser supports it at creation time
-      sinkId: outputDeviceId,
-    });
-    audioContexts.set(outputDeviceId, audioContext);
-    console.log(`Created new AudioContext for device ${outputDeviceId}`);
-  }
-
-  // Resume AudioContext if suspended (autoplay policy)
-  if (audioContext.state === "suspended") {
-    audioContext
-      .resume()
-      .then(() =>
-        console.log(`AudioContext resumed for device ${outputDeviceId}`),
-      )
-      .catch((err) => console.error(`Failed to resume AudioContext: ${err}`));
-  }
-
-  // Create a MediaStream with the track
-  const mediaStream = new MediaStream([track]);
-
-  // Create a MediaStreamAudioSourceNode
-  const sourceNode = audioContext.createMediaStreamSource(mediaStream);
-  console.log(`Created source node for track ${track.id}`);
-
-  // Create destination node
-  const destinationNode = audioContext.destination;
-
-  // Connect source to destination
-  sourceNode.connect(destinationNode);
-  console.log(
-    `Connected track ${track.id} to destination for device ${outputDeviceId}`,
-  );
-
-  // If the AudioContext API supports setSinkId directly, use it
-  if ("setSinkId" in AudioContext.prototype) {
-    audioContext
-      .setSinkId(outputDeviceId)
-      .then(() =>
-        console.log(`Set sinkId ${outputDeviceId} on AudioContext directly`),
-      )
-      .catch((err) =>
-        console.error(`Failed to set sinkId on AudioContext: ${err}`),
-      );
-  }
-
-  // Create a hidden audio element that will pull from the WebRTC stream
-  // This is necessary to get the WebRTC subsystem to deliver the audio to WebAudio
-  const pullElement = document.createElement("audio");
-  pullElement.id = `pull-${elementId}`;
-  pullElement.srcObject = mediaStream;
-  pullElement.style.display = "none";
-  pullElement.muted = true; // Don't actually play through the default device
-  document.body.appendChild(pullElement);
-
-  // Start pulling audio through the element
-  pullElement
-    .play()
-    .then(() => console.log(`Pull element started for track ${track.id}`))
-    .catch((err) => console.error(`Failed to start pull element: ${err}`));
-
-  // Return an object with cleanup method and context
-  return {
-    context: audioContext,
-    sourceNode: sourceNode,
-    pullElement: pullElement,
-    stop: function () {
-      // Disconnect and clean up resources
-      sourceNode.disconnect();
-      document.body.removeChild(pullElement);
-      console.log(
-        `Stopped routing track ${track.id} to device ${outputDeviceId}`,
-      );
-    },
-  };
-}
-
 async function startCall() {
   document.getElementById("startCall").disabled = true;
   const logDiv = document.getElementById("log");
@@ -126,9 +37,6 @@ async function addTranslator1() {
 async function addTranslator2() {
   await addTranslator("2");
 }
-
-// Keep track of active audio routings
-const activeAudioRoutings = new Map();
 
 async function addTranslator(translatorId) {
   if (!dubitInstance) {
@@ -176,24 +84,20 @@ async function addTranslator(translatorId) {
       metadata: { demo: true },
     });
 
+    /**
+     * Handles the translatedTrackReady event from the Dubit translator
+     */
     translator.onTranslatedTrackReady((track) => {
       logDiv.innerHTML += `<p>Translated track ready for translator ${translatorId}! Routing to output device: ${outputDeviceId}</p>`;
-
       // Ensure track is enabled
       track.enabled = true;
       console.log(`Track enabled state (${translatorId}):`, track.enabled);
 
+      // Create a unique ID for this routing
       const elementId = `audio-${translatorId}-${translator.getInstanceId()}`;
 
-      // Stop any existing routing for this translator
-      if (activeAudioRoutings.has(translatorId)) {
-        activeAudioRoutings.get(translatorId).stop();
-        activeAudioRoutings.delete(translatorId);
-      }
-
-      // Create new routing
-      const audioRouting = routeTrackToDevice(track, outputDeviceId, elementId);
-      activeAudioRoutings.set(translatorId, audioRouting);
+      // Route the track to the selected output device
+      Dubit.routeTrackToDevice(track, outputDeviceId, elementId);
 
       logDiv.innerHTML += `<p>Audio routing established for translator ${translatorId} to device ${outputDeviceId}</p>`;
     });
@@ -289,22 +193,3 @@ function populateLanguages() {
     console.error("Error fetching supported languages:", err);
   }
 }
-
-// Initialize audio on first user interaction
-function initializeAudio() {
-  // Create a short silent audio context to unblock audio
-  const silentContext = new (window.AudioContext ||
-    window.webkitAudioContext)();
-  silentContext.resume().then(() => {
-    console.log("Audio context initialized and resumed");
-    setTimeout(() => silentContext.close(), 1000);
-  });
-
-  // Remove the listener after first interaction
-  document.removeEventListener("click", initializeAudio);
-  document.removeEventListener("touchstart", initializeAudio);
-}
-
-// Set up listeners for user interaction
-document.addEventListener("click", initializeAudio);
-document.addEventListener("touchstart", initializeAudio);
