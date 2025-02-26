@@ -112,11 +112,8 @@ function createNewInstance(_a) {
     });
   });
 }
-function getSupportedFromLanguages() {
-  return SUPPORTED_FROM_LANGUAGES;
-}
-function getSupportedToLanguages() {
-  return SUPPORTED_TO_LANGUAGES;
+function getSupportedLanguages() {
+  return SUPPORTED_LANGUAGES;
 }
 function getCompleteTranscript(_a) {
   var instanceId = _a.instanceId,
@@ -154,17 +151,17 @@ var DubitInstance = /** @class */function () {
     this.apiUrl = apiUrl;
   }
   DubitInstance.prototype.validateTranslatorParams = function (params) {
-    if (!SUPPORTED_FROM_LANGUAGES.map(function (x) {
+    if (!SUPPORTED_LANGUAGES.map(function (x) {
       return x.langCode;
     }).includes(params.fromLang)) {
-      return new Error("Unsupported fromLang: ".concat(params.fromLang, ". Supported from languages: ").concat(SUPPORTED_FROM_LANGUAGES.map(function (x) {
+      return new Error("Unsupported fromLang: ".concat(params.fromLang, ". Supported from languages: ").concat(SUPPORTED_LANGUAGES.map(function (x) {
         return x.langCode;
       })));
     }
-    if (!SUPPORTED_TO_LANGUAGES.map(function (x) {
+    if (!SUPPORTED_LANGUAGES.map(function (x) {
       return x.langCode;
     }).includes(params.toLang)) {
-      return new Error("Unsupported toLang: ".concat(params.toLang, ". Supported to languages: ").concat(SUPPORTED_TO_LANGUAGES.map(function (x) {
+      return new Error("Unsupported toLang: ".concat(params.toLang, ". Supported to languages: ").concat(SUPPORTED_LANGUAGES.map(function (x) {
         return x.langCode;
       })));
     }
@@ -306,10 +303,10 @@ var Translator = /** @class */function () {
           case 9:
             this.callObject.on("track-started", function (event) {
               var _a;
-              var fromLangLabel = SUPPORTED_FROM_LANGUAGES.find(function (x) {
+              var fromLangLabel = SUPPORTED_LANGUAGES.find(function (x) {
                 return x.langCode == _this.fromLang;
               }).label;
-              var toLangLabel = SUPPORTED_TO_LANGUAGES.find(function (x) {
+              var toLangLabel = SUPPORTED_LANGUAGES.find(function (x) {
                 return x.langCode == _this.toLang;
               }).label;
               // TODO: add better identifier like some kind of id in metadata
@@ -327,10 +324,10 @@ var Translator = /** @class */function () {
                 var _this = this;
                 var _a;
                 return __generator(this, function (_b) {
-                  fromLangLabel = SUPPORTED_FROM_LANGUAGES.find(function (x) {
+                  fromLangLabel = SUPPORTED_LANGUAGES.find(function (x) {
                     return x.langCode == _this.fromLang;
                   }).label;
-                  toLangLabel = SUPPORTED_TO_LANGUAGES.find(function (x) {
+                  toLangLabel = SUPPORTED_LANGUAGES.find(function (x) {
                     return x.langCode == _this.toLang;
                   }).label;
                   if ((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) return [2 /*return*/];
@@ -615,7 +612,7 @@ var SUPPORTED_TRANSLATOR_VERSIONS = [{
   label: "V3' (Noise Reduction)",
   version: "3"
 }];
-var SUPPORTED_FROM_LANGUAGES = [{
+var SUPPORTED_LANGUAGES = [{
   langCode: "multi",
   label: "Multilingual (Spanish + English)"
 }, {
@@ -760,477 +757,12 @@ var SUPPORTED_FROM_LANGUAGES = [{
   langCode: "vi",
   label: "Vietnamese"
 }];
-var SUPPORTED_TO_LANGUAGES = [{
-  langCode: "af-ZA",
-  label: "Afrikaans (South Africa)"
-}, {
-  langCode: "am-ET",
-  label: "Amharic (Ethiopia)"
-}, {
-  langCode: "ar-AE",
-  label: "Arabic (United Arab Emirates)"
-}, {
-  langCode: "ar-BH",
-  label: "Arabic (Bahrain)"
-}, {
-  langCode: "ar-DZ",
-  label: "Arabic (Algeria)"
-}, {
-  langCode: "ar-EG",
-  label: "Arabic (Egypt)"
-}, {
-  langCode: "ar-IQ",
-  label: "Arabic (Iraq)"
-}, {
-  langCode: "ar-JO",
-  label: "Arabic (Jordan)"
-}, {
-  langCode: "ar-KW",
-  label: "Arabic (Kuwait)"
-}, {
-  langCode: "ar-LB",
-  label: "Arabic (Lebanon)"
-}, {
-  langCode: "ar-LY",
-  label: "Arabic (Libya)"
-}, {
-  langCode: "ar-MA",
-  label: "Arabic (Morocco)"
-}, {
-  langCode: "ar-OM",
-  label: "Arabic (Oman)"
-}, {
-  langCode: "ar-QA",
-  label: "Arabic (Qatar)"
-}, {
-  langCode: "ar-SA",
-  label: "Arabic (Saudi Arabia)"
-}, {
-  langCode: "ar-SY",
-  label: "Arabic (Syria)"
-}, {
-  langCode: "ar-TN",
-  label: "Arabic (Tunisia)"
-}, {
-  langCode: "ar-YE",
-  label: "Arabic (Yemen)"
-}, {
-  langCode: "as-IN",
-  label: "Assamese (India)"
-}, {
-  langCode: "az-AZ",
-  label: "Azerbaijani (Latin, Azerbaijan)"
-}, {
-  langCode: "bg-BG",
-  label: "Bulgarian (Bulgaria)"
-}, {
-  langCode: "bn-BD",
-  label: "Bangla (Bangladesh)"
-}, {
-  langCode: "bn-IN",
-  label: "Bengali (India)"
-}, {
-  langCode: "bs-BA",
-  label: "Bosnian (Bosnia and Herzegovina)"
-}, {
-  langCode: "ca-ES",
-  label: "Catalan"
-}, {
-  langCode: "cs-CZ",
-  label: "Czech (Czechia)"
-}, {
-  langCode: "cy-GB",
-  label: "Welsh (United Kingdom)"
-}, {
-  langCode: "da-DK",
-  label: "Danish (Denmark)"
-}, {
-  langCode: "de-AT",
-  label: "German (Austria)"
-}, {
-  langCode: "de-CH",
-  label: "German (Switzerland)"
-}, {
-  langCode: "de-DE",
-  label: "German (Germany)"
-}, {
-  langCode: "el-GR",
-  label: "Greek (Greece)"
-}, {
-  langCode: "en-AU",
-  label: "English (Australia)"
-}, {
-  langCode: "en-CA",
-  label: "English (Canada)"
-}, {
-  langCode: "en-GB",
-  label: "English (United Kingdom)"
-}, {
-  langCode: "en-HK",
-  label: "English (Hong Kong SAR)"
-}, {
-  langCode: "en-IE",
-  label: "English (Ireland)"
-}, {
-  langCode: "en-IN",
-  label: "English (India)"
-}, {
-  langCode: "en-KE",
-  label: "English (Kenya)"
-}, {
-  langCode: "en-NG",
-  label: "English (Nigeria)"
-}, {
-  langCode: "en-NZ",
-  label: "English (New Zealand)"
-}, {
-  langCode: "en-PH",
-  label: "English (Philippines)"
-}, {
-  langCode: "en-SG",
-  label: "English (Singapore)"
-}, {
-  langCode: "en-TZ",
-  label: "English (Tanzania)"
-}, {
-  langCode: "en-US",
-  label: "English (United States)"
-}, {
-  langCode: "en-ZA",
-  label: "English (South Africa)"
-}, {
-  langCode: "es-AR",
-  label: "Spanish (Argentina)"
-}, {
-  langCode: "es-BO",
-  label: "Spanish (Bolivia)"
-}, {
-  langCode: "es-CL",
-  label: "Spanish (Chile)"
-}, {
-  langCode: "es-CO",
-  label: "Spanish (Colombia)"
-}, {
-  langCode: "es-CR",
-  label: "Spanish (Costa Rica)"
-}, {
-  langCode: "es-CU",
-  label: "Spanish (Cuba)"
-}, {
-  langCode: "es-DO",
-  label: "Spanish (Dominican Republic)"
-}, {
-  langCode: "es-EC",
-  label: "Spanish (Ecuador)"
-}, {
-  langCode: "es-ES",
-  label: "Spanish (Spain)"
-}, {
-  langCode: "es-GQ",
-  label: "Spanish (Equatorial Guinea)"
-}, {
-  langCode: "es-GT",
-  label: "Spanish (Guatemala)"
-}, {
-  langCode: "es-HN",
-  label: "Spanish (Honduras)"
-}, {
-  langCode: "es-MX",
-  label: "Spanish (Mexico)"
-}, {
-  langCode: "es-NI",
-  label: "Spanish (Nicaragua)"
-}, {
-  langCode: "es-PA",
-  label: "Spanish (Panama)"
-}, {
-  langCode: "es-PE",
-  label: "Spanish (Peru)"
-}, {
-  langCode: "es-PR",
-  label: "Spanish (Puerto Rico)"
-}, {
-  langCode: "es-PY",
-  label: "Spanish (Paraguay)"
-}, {
-  langCode: "es-SV",
-  label: "Spanish (El Salvador)"
-}, {
-  langCode: "es-US",
-  label: "Spanish (United States)"
-}, {
-  langCode: "es-UY",
-  label: "Spanish (Uruguay)"
-}, {
-  langCode: "es-VE",
-  label: "Spanish (Venezuela)"
-}, {
-  langCode: "et-EE",
-  label: "Estonian (Estonia)"
-}, {
-  langCode: "eu-ES",
-  label: "Basque"
-}, {
-  langCode: "fa-IR",
-  label: "Persian (Iran)"
-}, {
-  langCode: "fi-FI",
-  label: "Finnish (Finland)"
-}, {
-  langCode: "fil-PH",
-  label: "Filipino (Philippines)"
-}, {
-  langCode: "fr-BE",
-  label: "French (Belgium)"
-}, {
-  langCode: "fr-CA",
-  label: "French (Canada)"
-}, {
-  langCode: "fr-CH",
-  label: "French (Switzerland)"
-}, {
-  langCode: "fr-FR",
-  label: "French (France)"
-}, {
-  langCode: "ga-IE",
-  label: "Irish (Ireland)"
-}, {
-  langCode: "gl-ES",
-  label: "Galician"
-}, {
-  langCode: "gu-IN",
-  label: "Gujarati (India)"
-}, {
-  langCode: "he-IL",
-  label: "Hebrew (Israel)"
-}, {
-  langCode: "hi-IN",
-  label: "Hindi (India)"
-}, {
-  langCode: "hr-HR",
-  label: "Croatian (Croatia)"
-}, {
-  langCode: "hu-HU",
-  label: "Hungarian (Hungary)"
-}, {
-  langCode: "hy-AM",
-  label: "Armenian (Armenia)"
-}, {
-  langCode: "id-ID",
-  label: "Indonesian (Indonesia)"
-}, {
-  langCode: "is-IS",
-  label: "Icelandic (Iceland)"
-}, {
-  langCode: "it-IT",
-  label: "Italian (Italy)"
-}, {
-  langCode: "iu-CANS-CA",
-  label: "Inuktitut (Syllabics, Canada)"
-}, {
-  langCode: "iu-LATN-CA",
-  label: "Inuktitut (Latin, Canada)"
-}, {
-  langCode: "ja-JP",
-  label: "Japanese (Japan)"
-}, {
-  langCode: "jv-ID",
-  label: "Javanese (Latin, Indonesia)"
-}, {
-  langCode: "ka-GE",
-  label: "Georgian (Georgia)"
-}, {
-  langCode: "kk-KZ",
-  label: "Kazakh (Kazakhstan)"
-}, {
-  langCode: "km-KH",
-  label: "Khmer (Cambodia)"
-}, {
-  langCode: "kn-IN",
-  label: "Kannada (India)"
-}, {
-  langCode: "ko-KR",
-  label: "Korean (Korea)"
-}, {
-  langCode: "lo-LA",
-  label: "Lao (Laos)"
-}, {
-  langCode: "lt-LT",
-  label: "Lithuanian (Lithuania)"
-}, {
-  langCode: "lv-LV",
-  label: "Latvian (Latvia)"
-}, {
-  langCode: "mk-MK",
-  label: "Macedonian (North Macedonia)"
-}, {
-  langCode: "ml-IN",
-  label: "Malayalam (India)"
-}, {
-  langCode: "mn-MN",
-  label: "Mongolian (Mongolia)"
-}, {
-  langCode: "mr-IN",
-  label: "Marathi (India)"
-}, {
-  langCode: "ms-MY",
-  label: "Malay (Malaysia)"
-}, {
-  langCode: "mt-MT",
-  label: "Maltese (Malta)"
-}, {
-  langCode: "my-MM",
-  label: "Burmese (Myanmar)"
-}, {
-  langCode: "nb-NO",
-  label: "Norwegian Bokmål (Norway)"
-}, {
-  langCode: "ne-NP",
-  label: "Nepali (Nepal)"
-}, {
-  langCode: "nl-BE",
-  label: "Dutch (Belgium)"
-}, {
-  langCode: "nl-NL",
-  label: "Dutch (Netherlands)"
-}, {
-  langCode: "or-IN",
-  label: "Oriya (India)"
-}, {
-  langCode: "pa-IN",
-  label: "Punjabi (India)"
-}, {
-  langCode: "pl-PL",
-  label: "Polish (Poland)"
-}, {
-  langCode: "ps-AF",
-  label: "Pashto (Afghanistan)"
-}, {
-  langCode: "pt-BR",
-  label: "Portuguese (Brazil)"
-}, {
-  langCode: "pt-PT",
-  label: "Portuguese (Portugal)"
-}, {
-  langCode: "ro-RO",
-  label: "Romanian (Romania)"
-}, {
-  langCode: "ru-RU",
-  label: "Russian (Russia)"
-}, {
-  langCode: "si-LK",
-  label: "Sinhala (Sri Lanka)"
-}, {
-  langCode: "sk-SK",
-  label: "Slovak (Slovakia)"
-}, {
-  langCode: "sl-SI",
-  label: "Slovenian (Slovenia)"
-}, {
-  langCode: "so-SO",
-  label: "Somali (Somalia)"
-}, {
-  langCode: "sq-AL",
-  label: "Albanian (Albania)"
-}, {
-  langCode: "sr-LATN-RS",
-  label: "Serbian (Latin, Serbia)"
-}, {
-  langCode: "sr-RS",
-  label: "Serbian (Cyrillic, Serbia)"
-}, {
-  langCode: "su-ID",
-  label: "Sundanese (Indonesia)"
-}, {
-  langCode: "sv-SE",
-  label: "Swedish (Sweden)"
-}, {
-  langCode: "sw-KE",
-  label: "Kiswahili (Kenya)"
-}, {
-  langCode: "sw-TZ",
-  label: "Kiswahili (Tanzania)"
-}, {
-  langCode: "ta-IN",
-  label: "Tamil (India)"
-}, {
-  langCode: "ta-LK",
-  label: "Tamil (Sri Lanka)"
-}, {
-  langCode: "ta-MY",
-  label: "Tamil (Malaysia)"
-}, {
-  langCode: "ta-SG",
-  label: "Tamil (Singapore)"
-}, {
-  langCode: "te-IN",
-  label: "Telugu (India)"
-}, {
-  langCode: "th-TH",
-  label: "Thai (Thailand)"
-}, {
-  langCode: "tr-TR",
-  label: "Turkish (Türkiye)"
-}, {
-  langCode: "uk-UA",
-  label: "Ukrainian (Ukraine)"
-}, {
-  langCode: "ur-IN",
-  label: "Urdu (India)"
-}, {
-  langCode: "ur-PK",
-  label: "Urdu (Pakistan)"
-}, {
-  langCode: "uz-UZ",
-  label: "Uzbek (Latin, Uzbekistan)"
-}, {
-  langCode: "vi-VN",
-  label: "Vietnamese (Vietnam)"
-}, {
-  langCode: "wuu-CN",
-  label: "Chinese (Wu, Simplified)"
-}, {
-  langCode: "yue-CN",
-  label: "Chinese (Cantonese, Simplified)"
-}, {
-  langCode: "zh-CN",
-  label: "Chinese (Mandarin, Simplified)"
-}, {
-  langCode: "zh-CN-GUANGXI",
-  label: "Chinese (Guangxi Accent Mandarin, Simplified)"
-}, {
-  langCode: "zh-CN-henan",
-  label: "Chinese (Zhongyuan Mandarin Henan, Simplified)"
-}, {
-  langCode: "zh-CN-liaoning",
-  label: "Chinese (Northeastern Mandarin, Simplified)"
-}, {
-  langCode: "zh-CN-shaanxi",
-  label: "Chinese (Zhongyuan Mandarin Shaanxi, Simplified)"
-}, {
-  langCode: "zh-CN-shandong",
-  label: "Chinese (Jilu Mandarin, Simplified)"
-}, {
-  langCode: "zh-CN-sichuan",
-  label: "Chinese (Southwestern Mandarin, Simplified)"
-}, {
-  langCode: "zh-HK",
-  label: "Chinese (Cantonese, Traditional)"
-}, {
-  langCode: "zh-TW",
-  label: "Chinese (Taiwanese Mandarin, Traditional)"
-}, {
-  langCode: "zu-ZA",
-  label: "isiZulu (South Africa)"
-}];
 
 exports.DubitInstance = DubitInstance;
-exports.SUPPORTED_FROM_LANGUAGES = SUPPORTED_FROM_LANGUAGES;
-exports.SUPPORTED_TO_LANGUAGES = SUPPORTED_TO_LANGUAGES;
+exports.SUPPORTED_LANGUAGES = SUPPORTED_LANGUAGES;
 exports.SUPPORTED_TRANSLATOR_VERSIONS = SUPPORTED_TRANSLATOR_VERSIONS;
 exports.Translator = Translator;
 exports.createNewInstance = createNewInstance;
 exports.getCompleteTranscript = getCompleteTranscript;
-exports.getSupportedFromLanguages = getSupportedFromLanguages;
-exports.getSupportedToLanguages = getSupportedToLanguages;
+exports.getSupportedLanguages = getSupportedLanguages;
 exports.routeTrackToDevice = routeTrackToDevice;

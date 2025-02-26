@@ -22,8 +22,7 @@ export type LanguageType = {
     label: string;
 };
 export declare function createNewInstance({ token, apiUrl, }: DubitCreateParams): Promise<DubitInstance>;
-export declare function getSupportedFromLanguages(): LanguageType[];
-export declare function getSupportedToLanguages(): LanguageType[];
+export declare function getSupportedLanguages(): LanguageType[];
 export declare function getCompleteTranscript({ instanceId, token, apiUrl, }: {
     instanceId: string;
     token: string;
@@ -114,6 +113,5 @@ export type VersionType = {
  * An array of available translator versions.
  */
 export declare const SUPPORTED_TRANSLATOR_VERSIONS: VersionType[];
-export declare const SUPPORTED_FROM_LANGUAGES: LanguageType[];
-export declare const SUPPORTED_TO_LANGUAGES: LanguageType[];
+export declare const SUPPORTED_LANGUAGES: LanguageType[];
 //# sourceMappingURL=dubit.d.ts.map
