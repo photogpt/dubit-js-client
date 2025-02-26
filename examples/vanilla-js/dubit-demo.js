@@ -135,8 +135,7 @@ function populateLanguages() {
   const targetLangSelect2 = document.getElementById("targetLang-2");
 
   try {
-    const fromLanguages = Dubit.getSupportedFromLanguages();
-    const toLanguages = Dubit.getSupportedToLanguages();
+    const fromLanguages = Dubit.getSupportedLanguages();
 
     sourceLangSelect1.innerHTML = "";
     sourceLangSelect2.innerHTML = "";
@@ -146,9 +145,6 @@ function populateLanguages() {
     fromLanguages.forEach((lang) => {
       sourceLangSelect1.appendChild(new Option(lang.label, lang.langCode));
       sourceLangSelect2.appendChild(new Option(lang.label, lang.langCode));
-    });
-
-    toLanguages.forEach((lang) => {
       targetLangSelect1.appendChild(new Option(lang.label, lang.langCode));
       targetLangSelect2.appendChild(new Option(lang.label, lang.langCode));
     });
@@ -157,7 +153,7 @@ function populateLanguages() {
     sourceLangSelect1.value = "hi";
     targetLangSelect1.value = "en-US";
     sourceLangSelect2.value = "en-US";
-    targetLangSelect2.value = "hi-IN";
+    targetLangSelect2.value = "hi";
   } catch (err) {
     console.error("Error fetching supported languages:", err);
   }
