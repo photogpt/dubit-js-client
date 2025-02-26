@@ -212,13 +212,18 @@ var DubitInstance = /** @class */function () {
 }();
 var Translator = /** @class */function () {
   function Translator(params) {
+    var _this = this;
     this.version = "latest";
     this.callObject = null;
-    this.outputTrack = null;
+    this.translatedTrack = null;
     this.participantId = "";
-    this.translatorId = "";
+    this.participantTracks = new Map();
+    this.outputDeviceId = null;
     this.onTranslatedTrackCallback = null;
     this.onCaptionsCallback = null;
+    this.getInstanceId = function () {
+      return _this.instanceId;
+    };
     this.instanceId = params.instanceId;
     this.roomUrl = params.roomUrl;
     this.token = params.token;
@@ -229,6 +234,7 @@ var Translator = /** @class */function () {
     this.version = params.version || this.version;
     this.inputAudioTrack = params.inputAudioTrack;
     this.metadata = params.metadata ? safeSerializeMetadata(params.metadata) : {};
+    this.outputDeviceId = params.outputDeviceId;
   }
   Translator.prototype.init = function () {
     return __awaiter(this, void 0, void 0, function () {
@@ -241,14 +247,7 @@ var Translator = /** @class */function () {
               this.callObject = Daily.createCallObject({
                 allowMultipleCallInstances: true,
                 videoSource: false,
-                subscribeToTracksAutomatically: false,
-                inputSettings: {
-                  audio: {
-                    processor: {
-                      type: "noise-cancellation"
-                    }
-                  }
-                }
+                subscribeToTracksAutomatically: false
               });
             } catch (error) {
               console.error("Translator: Failed to create Daily call object", error);
@@ -265,8 +264,15 @@ var Translator = /** @class */function () {
               url: this.roomUrl,
               audioSource: audioSource,
               videoSource: false,
-              subscribeToTracksAutomatically: true,
-              startAudioOff: audioSource === false
+              subscribeToTracksAutomatically: false,
+              startAudioOff: audioSource === false,
+              inputSettings: {
+                audio: {
+                  processor: {
+                    type: "noise-cancellation"
+                  }
+                }
+              }
             })];
           case 2:
             _a.sent();
@@ -296,33 +302,62 @@ var Translator = /** @class */function () {
             console.error("Translator: Error registering participant or adding bot", error_3);
             throw error_3;
           case 9:
-            // this should be done differently
-            // this.translatorId = await this.fetchTranslationBotId(this.participantId);
-            // ideally, we should check the bot id and subscribe to it
             this.callObject.on("track-started", function (event) {
-              var _a, _b;
-              console.debug("Translator: track-started", event);
-              if (((_a = event === null || event === void 0 ? void 0 : event.track) === null || _a === void 0 ? void 0 : _a.kind) === "audio" && !((_b = event === null || event === void 0 ? void 0 : event.participant) === null || _b === void 0 ? void 0 : _b.local)) {
-                _this.outputTrack = event.track;
-                if (_this.onTranslatedTrackCallback) {
-                  _this.onTranslatedTrackCallback(_this.outputTrack);
+              var _a;
+              var fromLangLabel = SUPPORTED_FROM_LANGUAGES.find(function (x) {
+                return x.langCode == _this.fromLang;
+              }).label;
+              var toLangLabel = SUPPORTED_TO_LANGUAGES.find(function (x) {
+                return x.langCode == _this.toLang;
+              }).label;
+              // TODO: add better identifier like some kind of id in metadata
+              if (event.track.kind === "audio" && !((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) && event.participant.user_name.includes("Translator ".concat(fromLangLabel, " -> ").concat(toLangLabel))) {
+                console.debug("CallClient: ".concat(_this.callObject.callClientId, " , event:"), event);
+                if (_this.onTranslatedTrackCallback && event.track) {
+                  _this.onTranslatedTrackCallback(event.track);
+                  _this.translatedTrack = event.track;
                 }
               }
             });
-            // Listen for caption events with filtering.
+            this.callObject.on("participant-joined", function (event) {
+              return __awaiter(_this, void 0, void 0, function () {
+                var fromLangLabel, toLangLabel;
+                var _this = this;
+                var _a;
+                return __generator(this, function (_b) {
+                  fromLangLabel = SUPPORTED_FROM_LANGUAGES.find(function (x) {
+                    return x.langCode == _this.fromLang;
+                  }).label;
+                  toLangLabel = SUPPORTED_TO_LANGUAGES.find(function (x) {
+                    return x.langCode == _this.toLang;
+                  }).label;
+                  if ((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) return [2 /*return*/];
+                  // TODO: add better identifier like some kind of id in metadata
+                  if (event.participant.user_name.includes("Translator ".concat(fromLangLabel, " -> ").concat(toLangLabel))) {
+                    console.debug("Subscribing - CallClient: ".concat(this.callObject.callClientId, " , event:"), event);
+                    this.callObject.updateParticipant(event.participant.session_id, {
+                      setSubscribedTracks: {
+                        audio: true
+                      }
+                    });
+                  }
+                  return [2 /*return*/];
+                });
+              });
+            });
             this.callObject.on("app-message", function (event) {
+              var _a;
               var data = event.data;
-              // Filter: ensure data exists, has the expected types, and is relevant to this translator.
-              if (data && (data.type === "user-transcript" || data.type === "translation-transcript" || data.type === "user-interim-transcript") && data.participant_id === _this.participantId) {
-                if (_this.onCaptionsCallback) {
-                  _this.onCaptionsCallback(data);
-                }
+              if (!((_a = data === null || data === void 0 ? void 0 : data.type) === null || _a === void 0 ? void 0 : _a.includes("transcript"))) return;
+              var validTypes = ["user-transcript", "translation-transcript", "user-interim-transcript"];
+              if (validTypes.includes(data.type) && data.participant_id === _this.participantId && (data === null || data === void 0 ? void 0 : data.transcript) && _this.onCaptionsCallback) {
+                _this.onCaptionsCallback(data);
               }
             });
             // Clear output track if a non-local participant (i.e. the bot) leaves.
             this.callObject.on("participant-left", function (event) {
-              if (!event.participant.local && _this.outputTrack) {
-                _this.outputTrack = null;
+              if (!event.participant.local && _this.translatedTrack) {
+                _this.translatedTrack = null;
                 console.error("Translator: Translation bot left; output track cleared");
               }
             });
@@ -331,9 +366,7 @@ var Translator = /** @class */function () {
       });
     });
   };
-  /**
-   * Registers the local participant
-   */
+  // Register local participant
   Translator.prototype.registerParticipant = function (participantId) {
     return __awaiter(this, void 0, void 0, function () {
       var response, error_4;
@@ -367,9 +400,7 @@ var Translator = /** @class */function () {
       });
     });
   };
-  /**
-   * Adds a translation bot for the given participant.
-   */
+  // Adds a translation bot for the given participant
   Translator.prototype.addTranslationBot = function (roomUrl, participantId, fromLanguage, toLanguage, voiceType) {
     return __awaiter(this, void 0, void 0, function () {
       var response, error_5;
@@ -409,47 +440,10 @@ var Translator = /** @class */function () {
       });
     });
   };
-  Translator.prototype.fetchTranslationBotId = function (participantId) {
-    var _a, _b;
-    return __awaiter(this, void 0, void 0, function () {
-      var translatorId, botsDataResponse, json, err_1;
-      return __generator(this, function (_c) {
-        switch (_c.label) {
-          case 0:
-            _c.trys.push([0, 6,, 7]);
-            translatorId = "";
-            _c.label = 1;
-          case 1:
-            if (!!translatorId) return [3 /*break*/, 5];
-            return [4 /*yield*/, fetch("".concat(this.apiUrl, "/participant/").concat(participantId, "/bot"))];
-          case 2:
-            botsDataResponse = _c.sent();
-            return [4 /*yield*/, botsDataResponse.json()];
-          case 3:
-            json = _c.sent();
-            translatorId = (_b = (_a = json === null || json === void 0 ? void 0 : json.data) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.id; // For now, we only support one bot per participant.
-            return [4 /*yield*/, new Promise(function (resolve) {
-              return setTimeout(resolve, 1000);
-            })];
-          case 4:
-            _c.sent();
-            return [3 /*break*/, 1];
-          case 5:
-            return [2 /*return*/, translatorId];
-          case 6:
-            err_1 = _c.sent();
-            console.error("Translator: Error fetching translator id", err_1);
-            throw err_1;
-          case 7:
-            return [2 /*return*/];
-        }
-      });
-    });
-  };
   Translator.prototype.onTranslatedTrackReady = function (callback) {
     this.onTranslatedTrackCallback = callback;
-    if (this.outputTrack) {
-      callback(this.outputTrack);
+    if (this.translatedTrack) {
+      callback(this.translatedTrack);
     }
   };
   Translator.prototype.onCaptions = function (callback) {
@@ -499,7 +493,7 @@ var Translator = /** @class */function () {
     return this.participantId;
   };
   Translator.prototype.getTranslatedTrack = function () {
-    return this.outputTrack;
+    return this.translatedTrack;
   };
   Translator.prototype.destroy = function () {
     if (this.callObject) {
@@ -513,6 +507,90 @@ var Translator = /** @class */function () {
   };
   return Translator;
 }();
+var audioContexts = new Map();
+var activeRoutings = new Map();
+/**
+ * Routes a WebRTC audio track to a specific output device using WebAudio
+ * This implementation avoids the WebRTC track mixing issue by using the WebAudio API
+ */
+function routeTrackToDevice(track, outputDeviceId, elementId) {
+  console.log("Routing track ".concat(track.id, " to device ").concat(outputDeviceId));
+  if (!elementId) {
+    elementId = "audio-".concat(track.id);
+  }
+  // Clean up any existing routing for this element ID
+  if (activeRoutings.has(elementId)) {
+    var oldRouting = activeRoutings.get(elementId);
+    oldRouting.stop();
+    activeRoutings.delete(elementId);
+    console.log("Cleaned up previous routing for ".concat(elementId));
+  }
+  // Create or get AudioContext for this output device
+  var audioContext;
+  if (audioContexts.has(outputDeviceId)) {
+    audioContext = audioContexts.get(outputDeviceId);
+    console.log("Reusing existing AudioContext for device ".concat(outputDeviceId));
+  } else {
+    audioContext = new AudioContext();
+    audioContexts.set(outputDeviceId, audioContext);
+    console.log("Created new AudioContext for device ".concat(outputDeviceId));
+  }
+  // Resume AudioContext if suspended (autoplay policy)
+  if (audioContext.state === "suspended") {
+    audioContext.resume().then(function () {
+      return console.log("AudioContext resumed for device ".concat(outputDeviceId));
+    }).catch(function (err) {
+      return console.error("Failed to resume AudioContext: ".concat(err));
+    });
+  }
+  var mediaStream = new MediaStream([track]);
+  var sourceNode = audioContext.createMediaStreamSource(mediaStream);
+  console.log("Created source node for track ".concat(track.id));
+  var destinationNode = audioContext.destination;
+  sourceNode.connect(destinationNode);
+  console.log("Connected track ".concat(track.id, " to destination for device ").concat(outputDeviceId));
+  // If the AudioContext API supports setSinkId directly, use it
+  if ("setSinkId" in AudioContext.prototype) {
+    audioContext //@ts-ignore
+    .setSinkId(outputDeviceId).then(function () {
+      return console.log("Set sinkId ".concat(outputDeviceId, " on AudioContext directly"));
+    }).catch(function (err) {
+      return console.error("Failed to set sinkId on AudioContext: ".concat(err));
+    });
+  }
+  // Create a hidden audio element that will pull from the WebRTC stream
+  // This is necessary to get the WebRTC subsystem to deliver the audio to WebAudio
+  var pullElement = document.createElement("audio");
+  pullElement.id = "pull-".concat(elementId);
+  pullElement.srcObject = mediaStream;
+  pullElement.style.display = "none";
+  pullElement.muted = true; // Don't actually play through the default device
+  document.body.appendChild(pullElement);
+  // Start pulling audio through the element
+  pullElement.play().then(function () {
+    return console.log("Pull element started for track ".concat(track.id));
+  }).catch(function (err) {
+    return console.error("Failed to start pull element: ".concat(err));
+  });
+  // Create routing info object with stop method
+  var routingInfo = {
+    context: audioContext,
+    sourceNode: sourceNode,
+    pullElement: pullElement,
+    stop: function () {
+      this.sourceNode.disconnect();
+      this.pullElement.pause();
+      this.pullElement.srcObject = null;
+      if (this.pullElement.parentNode) {
+        document.body.removeChild(this.pullElement);
+      }
+      console.log("Stopped routing track ".concat(track.id, " to device ").concat(outputDeviceId));
+    }
+  };
+  // Store the routing for future cleanup
+  activeRoutings.set(elementId, routingInfo);
+  return routingInfo;
+}
 function safeSerializeMetadata(metadata) {
   try {
     JSON.stringify(metadata);
@@ -1144,4 +1222,4 @@ var SUPPORTED_TO_LANGUAGES = [{
   label: "isiZulu (South Africa)"
 }];
 
-export { DubitInstance, SUPPORTED_FROM_LANGUAGES, SUPPORTED_TO_LANGUAGES, SUPPORTED_TRANSLATOR_VERSIONS, Translator, createNewInstance, getCompleteTranscript, getSupportedFromLanguages, getSupportedToLanguages };
+export { DubitInstance, SUPPORTED_FROM_LANGUAGES, SUPPORTED_TO_LANGUAGES, SUPPORTED_TRANSLATOR_VERSIONS, Translator, createNewInstance, getCompleteTranscript, getSupportedFromLanguages, getSupportedToLanguages, routeTrackToDevice };

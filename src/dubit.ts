@@ -1,5 +1,7 @@
 import Daily, {
   DailyCall,
+  DailyEventObjectAppMessage,
+  DailyEventObjectParticipant,
   DailyEventObjectParticipantLeft,
   DailyEventObjectTrack,
   DailyParticipantsObject,
@@ -24,6 +26,7 @@ export type TranslatorParams = {
   version?: string;
   inputAudioTrack: MediaStreamTrack | null;
   metadata?: Record<string, any>;
+  outputDeviceId?: string;
 };
 
 export type LanguageType = {
@@ -187,9 +190,10 @@ export class Translator {
   private metadata?: Record<string, any>;
 
   private callObject: DailyCall | null = null;
-  private outputTrack: MediaStreamTrack | null = null;
+  private translatedTrack: MediaStreamTrack | null = null;
   private participantId = "";
-  private translatorId = "";
+  private participantTracks: Map<string, MediaStreamTrack> = new Map();
+  private outputDeviceId: string | null = null;
 
   private onTranslatedTrackCallback:
     | ((track: MediaStreamTrack) => void)
@@ -198,6 +202,7 @@ export class Translator {
 
   // Called upon destroy to allow the parent to clean up references.
   public onDestroy?: () => void;
+  public getInstanceId = () => this.instanceId;
 
   constructor(params: {
     instanceId: string;
@@ -210,6 +215,7 @@ export class Translator {
     version?: string;
     inputAudioTrack: MediaStreamTrack | null;
     metadata?: Record<string, any>;
+    outputDeviceId?: string;
   }) {
     this.instanceId = params.instanceId;
     this.roomUrl = params.roomUrl;
@@ -223,6 +229,7 @@ export class Translator {
     this.metadata = params.metadata
       ? safeSerializeMetadata(params.metadata)
       : {};
+    this.outputDeviceId = params.outputDeviceId;
   }
 
   public async init(): Promise<void> {
@@ -231,13 +238,6 @@ export class Translator {
         allowMultipleCallInstances: true,
         videoSource: false,
         subscribeToTracksAutomatically: false,
-        inputSettings: {
-          audio: {
-            processor: {
-              type: "noise-cancellation",
-            },
-          },
-        },
       });
     } catch (error) {
       console.error("Translator: Failed to create Daily call object", error);
@@ -254,8 +254,15 @@ export class Translator {
         url: this.roomUrl,
         audioSource,
         videoSource: false,
-        subscribeToTracksAutomatically: true,
+        subscribeToTracksAutomatically: false,
         startAudioOff: audioSource === false,
+        inputSettings: {
+          audio: {
+            processor: {
+              type: "noise-cancellation",
+            },
+          },
+        },
       });
     } catch (error) {
       console.error("Translator: Failed to join the Daily room", error);
@@ -287,33 +294,80 @@ export class Translator {
       throw error;
     }
 
-    // this should be done differently
-    // this.translatorId = await this.fetchTranslationBotId(this.participantId);
-    // ideally, we should check the bot id and subscribe to it
     this.callObject.on("track-started", (event: DailyEventObjectTrack) => {
-      console.debug("Translator: track-started", event);
-      if (event?.track?.kind === "audio" && !event?.participant?.local) {
-        this.outputTrack = event.track;
-        if (this.onTranslatedTrackCallback) {
-          this.onTranslatedTrackCallback(this.outputTrack);
+      let fromLangLabel = SUPPORTED_FROM_LANGUAGES.find(
+        (x) => x.langCode == this.fromLang,
+      ).label;
+      let toLangLabel = SUPPORTED_TO_LANGUAGES.find(
+        (x) => x.langCode == this.toLang,
+      ).label;
+
+      // TODO: add better identifier like some kind of id in metadata
+      if (
+        event.track.kind === "audio" &&
+        !event?.participant?.local &&
+        event.participant.user_name.includes(
+          `Translator ${fromLangLabel} -> ${toLangLabel}`,
+        )
+      ) {
+        console.debug(
+          `CallClient: ${this.callObject.callClientId} , event:`,
+          event,
+        );
+
+        if (this.onTranslatedTrackCallback && event.track) {
+          this.onTranslatedTrackCallback(event.track);
+          this.translatedTrack = event.track;
         }
       }
     });
 
-    // Listen for caption events with filtering.
-    this.callObject.on("app-message", (event: any) => {
-      const data = event.data;
-      // Filter: ensure data exists, has the expected types, and is relevant to this translator.
-      if (
-        data &&
-        (data.type === "user-transcript" ||
-          data.type === "translation-transcript" ||
-          data.type === "user-interim-transcript") &&
-        data.participant_id === this.participantId
-      ) {
-        if (this.onCaptionsCallback) {
-          this.onCaptionsCallback(data);
+    this.callObject.on(
+      "participant-joined",
+      async (event: DailyEventObjectParticipant) => {
+        let fromLangLabel = SUPPORTED_FROM_LANGUAGES.find(
+          (x) => x.langCode == this.fromLang,
+        ).label;
+        let toLangLabel = SUPPORTED_TO_LANGUAGES.find(
+          (x) => x.langCode == this.toLang,
+        ).label;
+        if (event?.participant?.local) return;
+
+        // TODO: add better identifier like some kind of id in metadata
+        if (
+          event.participant.user_name.includes(
+            `Translator ${fromLangLabel} -> ${toLangLabel}`,
+          )
+        ) {
+          console.debug(
+            `Subscribing - CallClient: ${this.callObject.callClientId} , event:`,
+            event,
+          );
+          this.callObject.updateParticipant(event.participant.session_id, {
+            setSubscribedTracks: {
+              audio: true,
+            },
+          });
+        } else {
         }
+      },
+    );
+
+    this.callObject.on("app-message", (event: DailyEventObjectAppMessage) => {
+      const data = event.data;
+      if (!data?.type?.includes("transcript")) return;
+      let validTypes = [
+        "user-transcript",
+        "translation-transcript",
+        "user-interim-transcript",
+      ];
+      if (
+        validTypes.includes(data.type) &&
+        data.participant_id === this.participantId &&
+        data?.transcript &&
+        this.onCaptionsCallback
+      ) {
+        this.onCaptionsCallback(data);
       }
     });
 
@@ -321,8 +375,8 @@ export class Translator {
     this.callObject.on(
       "participant-left",
       (event: DailyEventObjectParticipantLeft) => {
-        if (!event.participant.local && this.outputTrack) {
-          this.outputTrack = null;
+        if (!event.participant.local && this.translatedTrack) {
+          this.translatedTrack = null;
           console.error(
             "Translator: Translation bot left; output track cleared",
           );
@@ -331,9 +385,7 @@ export class Translator {
     );
   }
 
-  /**
-   * Registers the local participant
-   */
+  // Register local participant
   private async registerParticipant(participantId: string): Promise<void> {
     try {
       const response = await fetch(`${this.apiUrl}/participant`, {
@@ -353,9 +405,7 @@ export class Translator {
     }
   }
 
-  /**
-   * Adds a translation bot for the given participant.
-   */
+  // Adds a translation bot for the given participant
   private async addTranslationBot(
     roomUrl: string,
     participantId: string,
@@ -389,30 +439,12 @@ export class Translator {
     }
   }
 
-  private async fetchTranslationBotId(participantId: string): Promise<string> {
-    try {
-      let translatorId = "";
-      while (!translatorId) {
-        let botsDataResponse = await fetch(
-          `${this.apiUrl}/participant/${participantId}/bot`,
-        );
-        let json = await botsDataResponse.json();
-        translatorId = json?.data?.[0]?.id; // For now, we only support one bot per participant.
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-      return translatorId;
-    } catch (err) {
-      console.error("Translator: Error fetching translator id", err);
-      throw err;
-    }
-  }
-
   public onTranslatedTrackReady(
     callback: (translatedTrack: MediaStreamTrack) => void,
   ): void {
     this.onTranslatedTrackCallback = callback;
-    if (this.outputTrack) {
-      callback(this.outputTrack);
+    if (this.translatedTrack) {
+      callback(this.translatedTrack);
     }
   }
 
@@ -446,7 +478,7 @@ export class Translator {
   }
 
   public getTranslatedTrack(): MediaStreamTrack | null {
-    return this.outputTrack;
+    return this.translatedTrack;
   }
 
   public destroy(): void {
@@ -459,6 +491,113 @@ export class Translator {
       this.onDestroy();
     }
   }
+}
+
+const audioContexts = new Map();
+const activeRoutings = new Map();
+
+/**
+ * Routes a WebRTC audio track to a specific output device using WebAudio
+ * This implementation avoids the WebRTC track mixing issue by using the WebAudio API
+ */
+export function routeTrackToDevice(
+  track: MediaStreamTrack,
+  outputDeviceId: string,
+  elementId: string,
+): object {
+  console.log(`Routing track ${track.id} to device ${outputDeviceId}`);
+  if (!elementId) {
+    elementId = `audio-${track.id}`;
+  }
+
+  // Clean up any existing routing for this element ID
+  if (activeRoutings.has(elementId)) {
+    const oldRouting = activeRoutings.get(elementId);
+    oldRouting.stop();
+    activeRoutings.delete(elementId);
+    console.log(`Cleaned up previous routing for ${elementId}`);
+  }
+
+  // Create or get AudioContext for this output device
+  let audioContext: AudioContext;
+  if (audioContexts.has(outputDeviceId)) {
+    audioContext = audioContexts.get(outputDeviceId);
+    console.log(`Reusing existing AudioContext for device ${outputDeviceId}`);
+  } else {
+    audioContext = new AudioContext();
+    audioContexts.set(outputDeviceId, audioContext);
+    console.log(`Created new AudioContext for device ${outputDeviceId}`);
+  }
+
+  // Resume AudioContext if suspended (autoplay policy)
+  if (audioContext.state === "suspended") {
+    audioContext
+      .resume()
+      .then(() =>
+        console.log(`AudioContext resumed for device ${outputDeviceId}`),
+      )
+      .catch((err) => console.error(`Failed to resume AudioContext: ${err}`));
+  }
+
+  const mediaStream = new MediaStream([track]);
+  const sourceNode = audioContext.createMediaStreamSource(mediaStream);
+  console.log(`Created source node for track ${track.id}`);
+  const destinationNode = audioContext.destination;
+  sourceNode.connect(destinationNode);
+  console.log(
+    `Connected track ${track.id} to destination for device ${outputDeviceId}`,
+  );
+
+  // If the AudioContext API supports setSinkId directly, use it
+  if ("setSinkId" in AudioContext.prototype) {
+    audioContext //@ts-ignore
+      .setSinkId(outputDeviceId)
+      .then(() =>
+        console.log(`Set sinkId ${outputDeviceId} on AudioContext directly`),
+      )
+      .catch((err: DOMException) =>
+        console.error(`Failed to set sinkId on AudioContext: ${err}`),
+      );
+  }
+
+  // Create a hidden audio element that will pull from the WebRTC stream
+  // This is necessary to get the WebRTC subsystem to deliver the audio to WebAudio
+  const pullElement = document.createElement("audio");
+  pullElement.id = `pull-${elementId}`;
+  pullElement.srcObject = mediaStream;
+  pullElement.style.display = "none";
+  pullElement.muted = true; // Don't actually play through the default device
+  document.body.appendChild(pullElement);
+
+  // Start pulling audio through the element
+  pullElement
+    .play()
+    .then(() => console.log(`Pull element started for track ${track.id}`))
+    .catch((err) => console.error(`Failed to start pull element: ${err}`));
+
+  // Create routing info object with stop method
+  const routingInfo = {
+    context: audioContext,
+    sourceNode: sourceNode,
+    pullElement: pullElement,
+    stop: function () {
+      this.sourceNode.disconnect();
+      this.pullElement.pause();
+      this.pullElement.srcObject = null;
+      if (this.pullElement.parentNode) {
+        document.body.removeChild(this.pullElement);
+      }
+
+      console.log(
+        `Stopped routing track ${track.id} to device ${outputDeviceId}`,
+      );
+    },
+  };
+
+  // Store the routing for future cleanup
+  activeRoutings.set(elementId, routingInfo);
+
+  return routingInfo;
 }
 
 function safeSerializeMetadata(
