@@ -1,8 +1,54 @@
 const token = import.meta.env.VITE_DUBIT_API_KEY;
 
 document.getElementById("startCall").addEventListener("click", startCall);
-document.getElementById("addTranslator-1").addEventListener("click", () => addTranslator("1"));
-document.getElementById("addTranslator-2").addEventListener("click", () => addTranslator("2"));
+document.getElementById("addTranslator-1").addEventListener("click", async (event) => {
+  try {
+    let el = event.target;
+    el.disabled = true;
+    el.innerText = "Setting up translator ...";
+    el.classList.add("bg-zinc-700", "text-gray", "hover:bg-zinc-700", "hover:text-gray", "cursor-progress");
+    await addTranslator("1");
+
+    el.innerText = "Ready";
+    el.classList.remove("bg-zinc-700", "text-gray", "hover:bg-zinc-700", "hover:text-gray", "cursor-progress");
+    el.classList.add("cursor-not-allowed");
+  } catch (err) {
+    el.disabled = false;
+    el.innerText = "Start Translation";
+    el.classList.remove(
+      "bg-zinc-700",
+      "text-gray",
+      "hover:bg-zinc-700",
+      "hover:text-gray",
+      "cursor-progress",
+      "cursor-not-allowed",
+    );
+  }
+});
+document.getElementById("addTranslator-2").addEventListener("click", async (event) => {
+  try {
+    let el = event.target;
+    el.disabled = true;
+    el.innerText = "Setting up translator ...";
+    el.classList.add("bg-zinc-700", "text-gray", "hover:bg-zinc-700", "hover:text-gray", "cursor-progress");
+    await addTranslator("2");
+
+    el.innerText = "Ready";
+    el.classList.remove("bg-zinc-700", "text-gray", "hover:bg-zinc-700", "hover:text-gray", "cursor-progress");
+    el.classList.add("cursor-not-allowed");
+  } catch (err) {
+    el.disabled = false;
+    el.innerText = "Start Translation";
+    el.classList.remove(
+      "bg-zinc-700",
+      "text-gray",
+      "hover:bg-zinc-700",
+      "hover:text-gray",
+      "cursor-progress",
+      "cursor-not-allowed",
+    );
+  }
+});
 
 let dubitInstance = null;
 
@@ -91,6 +137,11 @@ async function addTranslator(translatorId) {
   } catch (err) {
     console.error(`Error adding translator ${translatorId}:`, err);
     logDiv.innerHTML += `<p style="color:red;">Error (Translator ${translatorId}): ${err.message}</p>`;
+
+    document.getElementById(`addTranslator-${translatorId}`).disabled = false;
+    document
+      .getElementById(`addTranslator-${translatorId}`)
+      .classList.remove("bg-zinc-700", "text-gray", "hover:bg-zinc-700", "hover:text-gray", "cursor-not-allowed");
   }
 }
 
