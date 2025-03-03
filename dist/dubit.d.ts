@@ -13,6 +13,8 @@ export type TranslatorParams = {
     toLang: string;
     voiceType: "male" | "female";
     version?: string;
+    keywords?: boolean;
+    translationBeep?: boolean;
     inputAudioTrack: MediaStreamTrack | null;
     metadata?: Record<string, any>;
     outputDeviceId?: string;
@@ -47,6 +49,8 @@ export declare class Translator {
     private toLang;
     private voiceType;
     private version;
+    private keywords;
+    private translationBeep;
     private inputAudioTrack;
     private metadata?;
     private callObject;
@@ -63,14 +67,7 @@ export declare class Translator {
         roomUrl: string;
         token: string;
         apiUrl: string;
-        fromLang: string;
-        toLang: string;
-        voiceType: "male" | "female";
-        version?: string;
-        inputAudioTrack: MediaStreamTrack | null;
-        metadata?: Record<string, any>;
-        outputDeviceId?: string;
-    });
+    } & TranslatorParams);
     init(): Promise<void>;
     private registerParticipant;
     private addTranslationBot;

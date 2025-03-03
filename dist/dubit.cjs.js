@@ -213,6 +213,8 @@ var Translator = /** @class */function () {
   function Translator(params) {
     var _this = this;
     this.version = "latest";
+    this.keywords = false;
+    this.translationBeep = false;
     this.callObject = null;
     this.translatedTrack = null;
     this.participantId = "";
@@ -231,6 +233,8 @@ var Translator = /** @class */function () {
     this.toLang = params.toLang;
     this.voiceType = params.voiceType;
     this.version = params.version || this.version;
+    this.keywords = params.keywords;
+    this.translationBeep = params.translationBeep;
     this.inputAudioTrack = params.inputAudioTrack;
     this.metadata = params.metadata ? safeSerializeMetadata(params.metadata) : {};
     this.outputDeviceId = params.outputDeviceId;
@@ -292,7 +296,7 @@ var Translator = /** @class */function () {
             return [4 /*yield*/, this.registerParticipant(this.participantId)];
           case 6:
             _a.sent();
-            return [4 /*yield*/, this.addTranslationBot(this.roomUrl, this.participantId, this.fromLang, this.toLang, this.voiceType)];
+            return [4 /*yield*/, this.addTranslationBot(this.roomUrl, this.participantId, this.fromLang, this.toLang, this.voiceType, this.version, this.keywords, this.translationBeep)];
           case 7:
             _a.sent();
             return [3 /*break*/, 9];
@@ -400,7 +404,13 @@ var Translator = /** @class */function () {
     });
   };
   // Adds a translation bot for the given participant
-  Translator.prototype.addTranslationBot = function (roomUrl, participantId, fromLanguage, toLanguage, voiceType) {
+  Translator.prototype.addTranslationBot = function (roomUrl, participantId, fromLanguage, toLanguage, voiceType, version, keywords, translationBeep) {
+    if (keywords === void 0) {
+      keywords = false;
+    }
+    if (translationBeep === void 0) {
+      translationBeep = false;
+    }
     return __awaiter(this, void 0, void 0, function () {
       var response, error_5;
       return __generator(this, function (_a) {
@@ -420,6 +430,9 @@ var Translator = /** @class */function () {
                 participant_id: participantId,
                 bot_type: "translation",
                 male: voiceType === "male",
+                version: version,
+                keywords: keywords,
+                translation_beep: translationBeep,
                 metadata: this.metadata
               })
             })];

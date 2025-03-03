@@ -24,6 +24,8 @@ export type TranslatorParams = {
   toLang: string;
   voiceType: "male" | "female";
   version?: string;
+  keywords?: boolean;
+  translationBeep?: boolean;
   inputAudioTrack: MediaStreamTrack | null;
   metadata?: Record<string, any>;
   outputDeviceId?: string;
@@ -178,6 +180,8 @@ export class Translator {
   private toLang: string;
   private voiceType: "male" | "female";
   private version: string | undefined = "latest";
+  private keywords: boolean = false;
+  private translationBeep: boolean = false;
   private inputAudioTrack: MediaStreamTrack | null;
   private metadata?: Record<string, any>;
 
@@ -196,19 +200,14 @@ export class Translator {
   public onDestroy?: () => void;
   public getInstanceId = () => this.instanceId;
 
-  constructor(params: {
-    instanceId: string;
-    roomUrl: string;
-    token: string;
-    apiUrl: string;
-    fromLang: string;
-    toLang: string;
-    voiceType: "male" | "female";
-    version?: string;
-    inputAudioTrack: MediaStreamTrack | null;
-    metadata?: Record<string, any>;
-    outputDeviceId?: string;
-  }) {
+  constructor(
+    params: {
+      instanceId: string;
+      roomUrl: string;
+      token: string;
+      apiUrl: string;
+    } & TranslatorParams,
+  ) {
     this.instanceId = params.instanceId;
     this.roomUrl = params.roomUrl;
     this.token = params.token;
@@ -217,6 +216,8 @@ export class Translator {
     this.toLang = params.toLang;
     this.voiceType = params.voiceType;
     this.version = params.version || this.version;
+    this.keywords = params.keywords;
+    this.translationBeep = params.translationBeep;
     this.inputAudioTrack = params.inputAudioTrack;
     this.metadata = params.metadata
       ? safeSerializeMetadata(params.metadata)
@@ -277,6 +278,9 @@ export class Translator {
         this.fromLang,
         this.toLang,
         this.voiceType,
+        this.version,
+        this.keywords,
+        this.translationBeep,
       );
     } catch (error) {
       console.error(
@@ -404,6 +408,9 @@ export class Translator {
     fromLanguage: string,
     toLanguage: string,
     voiceType: "male" | "female",
+    version: string,
+    keywords: boolean = false,
+    translationBeep: boolean = false,
   ): Promise<void> {
     try {
       const response = await fetch(`${this.apiUrl}/meeting/bot/join`, {
@@ -419,6 +426,9 @@ export class Translator {
           participant_id: participantId,
           bot_type: "translation",
           male: voiceType === "male",
+          version: version,
+          keywords: keywords,
+          translation_beep: translationBeep,
           metadata: this.metadata,
         }),
       });
