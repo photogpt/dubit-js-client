@@ -111,6 +111,9 @@ async function addTranslator(translatorId) {
       voiceType: "female",
       inputAudioTrack: audioTrack,
       metadata: { demo: true },
+      version: "2",
+      keywords: false,
+      translationBeep: true,
     });
 
     translator.onTranslatedTrackReady((track) => {
