@@ -14,6 +14,7 @@ export type TranslatorParams = {
     voiceType: "male" | "female";
     version?: string;
     keywords?: boolean;
+    hqVoices?: boolean;
     translationBeep?: boolean;
     inputAudioTrack: MediaStreamTrack | null;
     metadata?: Record<string, any>;
@@ -51,6 +52,7 @@ export declare class Translator {
     private version;
     private keywords;
     private translationBeep;
+    private hqVoices;
     private inputAudioTrack;
     private metadata?;
     private callObject;
