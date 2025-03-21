@@ -25,6 +25,7 @@ export type TranslatorParams = {
   voiceType: "male" | "female";
   version?: string;
   keywords?: boolean;
+  hqVoices?: boolean;
   translationBeep?: boolean;
   inputAudioTrack: MediaStreamTrack | null;
   metadata?: Record<string, any>;
@@ -182,6 +183,7 @@ export class Translator {
   private version: string | undefined = "latest";
   private keywords: boolean = false;
   private translationBeep: boolean = false;
+  private hqVoices: boolean = false;
   private inputAudioTrack: MediaStreamTrack | null;
   private metadata?: Record<string, any>;
 
@@ -218,6 +220,7 @@ export class Translator {
     this.version = params.version || this.version;
     this.keywords = params.keywords;
     this.translationBeep = params.translationBeep;
+    this.hqVoices = params.hqVoices;
     this.inputAudioTrack = params.inputAudioTrack;
     this.metadata = params.metadata
       ? safeSerializeMetadata(params.metadata)
@@ -281,6 +284,7 @@ export class Translator {
         this.version,
         this.keywords,
         this.translationBeep,
+        this.hqVoices,
       );
     } catch (error) {
       console.error(
@@ -411,6 +415,7 @@ export class Translator {
     version: string,
     keywords: boolean = false,
     translationBeep: boolean = false,
+    hqVoices: boolean = false,
   ): Promise<void> {
     try {
       const response = await fetch(`${this.apiUrl}/meeting/bot/join`, {
@@ -429,6 +434,7 @@ export class Translator {
           version: version,
           keywords: keywords,
           translation_beep: translationBeep,
+          hq_voices: hqVoices,
           metadata: this.metadata,
         }),
       });
