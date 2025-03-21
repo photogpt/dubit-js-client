@@ -217,6 +217,7 @@
         this.version = "latest";
         this.keywords = false;
         this.translationBeep = false;
+        this.hqVoices = false;
         this.callObject = null;
         this.translatedTrack = null;
         this.participantId = "";
@@ -237,6 +238,7 @@
         this.version = params.version || this.version;
         this.keywords = params.keywords;
         this.translationBeep = params.translationBeep;
+        this.hqVoices = params.hqVoices;
         this.inputAudioTrack = params.inputAudioTrack;
         this.metadata = params.metadata ? safeSerializeMetadata(params.metadata) : {};
         this.outputDeviceId = params.outputDeviceId;
@@ -298,7 +300,7 @@
                 return [4 /*yield*/, this.registerParticipant(this.participantId)];
               case 6:
                 _a.sent();
-                return [4 /*yield*/, this.addTranslationBot(this.roomUrl, this.participantId, this.fromLang, this.toLang, this.voiceType, this.version, this.keywords, this.translationBeep)];
+                return [4 /*yield*/, this.addTranslationBot(this.roomUrl, this.participantId, this.fromLang, this.toLang, this.voiceType, this.version, this.keywords, this.translationBeep, this.hqVoices)];
               case 7:
                 _a.sent();
                 return [3 /*break*/, 9];
@@ -406,12 +408,15 @@
         });
       };
       // Adds a translation bot for the given participant
-      Translator.prototype.addTranslationBot = function (roomUrl, participantId, fromLanguage, toLanguage, voiceType, version, keywords, translationBeep) {
+      Translator.prototype.addTranslationBot = function (roomUrl, participantId, fromLanguage, toLanguage, voiceType, version, keywords, translationBeep, hqVoices) {
         if (keywords === void 0) {
           keywords = false;
         }
         if (translationBeep === void 0) {
           translationBeep = false;
+        }
+        if (hqVoices === void 0) {
+          hqVoices = false;
         }
         return __awaiter(this, void 0, void 0, function () {
           var response, error_5;
@@ -435,6 +440,7 @@
                     version: version,
                     keywords: keywords,
                     translation_beep: translationBeep,
+                    hq_voices: hqVoices,
                     metadata: this.metadata
                   })
                 })];
