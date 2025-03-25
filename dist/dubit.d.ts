@@ -29,12 +29,121 @@ export type LanguageType = {
     langCode: string;
     label: string;
 };
-export interface DubitLogEventDef {
+interface DubitLogEventDef {
     readonly code: string;
     readonly level: "error" | "warn" | "info" | "debug";
     readonly userMessage: string;
     readonly description: string;
 }
+export interface DubitUserLog {
+    eventCode: string;
+    level: "error" | "warn" | "info" | "debug";
+    userMessage: string;
+    className: string;
+    timestamp: string;
+    internalData?: any;
+    error?: Error;
+}
+export declare function createNewInstance({ token, apiUrl, loggerCallback, }: DubitCreateParams): Promise<DubitInstance>;
+export declare function getSupportedLanguages(): LanguageType[];
+export declare function validateApiKey(apiKey: string): Promise<boolean>;
+export declare function getCompleteTranscript({ instanceId, token, apiUrl, }: {
+    instanceId: string;
+    token: string;
+    apiUrl?: string;
+}): Promise<any>;
+export declare class DubitInstance {
+    instanceId: string;
+    private roomUrl;
+    token: string;
+    private apiUrl;
+    private activeTranslators;
+    private loggerCallback;
+    constructor(instanceId: string, roomUrl: string, token: string, apiUrl: string);
+    setLoggerCallback(callback: ((log: DubitUserLog) => void) | null): void;
+    _log(eventDef: DubitLogEventDef, internalData?: any, originalError?: Error, messageParams?: Record<string, any>): void;
+    addTranslator(params: TranslatorParams): Promise<Translator>;
+    getActiveTranslators(): Map<string, Translator>;
+}
+export declare class Translator {
+    private instanceId;
+    private roomUrl;
+    private token;
+    private apiUrl;
+    private fromLang;
+    private toLang;
+    private voiceType;
+    private version;
+    private keywords;
+    private translationBeep;
+    private hqVoices;
+    private inputAudioTrack;
+    private metadata?;
+    private callObject;
+    private translatedTrack;
+    private participantId;
+    private outputDeviceId;
+    private loggerCallback;
+    private onTranslatedTrackCallback;
+    private onCaptionsCallback;
+    onDestroy?: () => void;
+    getInstanceId: () => string;
+    constructor(params: {
+        instanceId: string;
+        roomUrl: string;
+        token: string;
+        apiUrl: string;
+        loggerCallback?: ((log: DubitUserLog) => void) | null;
+    } & TranslatorParams);
+    private _log;
+    private _getTranslatorLabel;
+    init(): Promise<void>;
+    private handleTrackStarted;
+    private handleParticipantJoined;
+    private handleAppMessage;
+    private handleParticipantLeft;
+    private registerParticipant;
+    private addTranslationBot;
+    onTranslatedTrackReady(callback: (translatedTrack: MediaStreamTrack) => void): void;
+    onCaptions(callback: (caption: CaptionEvent) => void): void;
+    updateInputTrack(newInputTrack: MediaStreamTrack | null): Promise<void>;
+    getParticipantId(): string;
+    getTranslatedTrack(): MediaStreamTrack | null;
+    destroy(): Promise<void>;
+}
+/**
+ * Routes a WebRTC audio track to a specific output device using WebAudio
+ * This implementation avoids the WebRTC track mixing issue by using the WebAudio API
+ */
+export declare function routeTrackToDevice(track: MediaStreamTrack, outputDeviceId: string, elementId: string): object;
+/**
+ * Represents a version object with a version string and a label.
+ *
+ * @example
+ * const version1: VersionType = {
+ *   version: '1',
+ *   label: 'V1 (Flash)'
+ * };
+ *
+ * const version2: VersionType = {
+ *   version: '2',
+ *   label: 'V2 (Pro)'
+ * };
+ *
+ * const version3: VersionType = {
+ *   version: '3',
+ *   label: 'V3 (Noise Reduction)'
+ * };
+ */
+export type VersionType = {
+    version: string;
+    label: string;
+};
+/**
+ * An array of available translator versions.
+ */
+export declare const SUPPORTED_TRANSLATOR_VERSIONS: VersionType[];
+export declare const SUPPORTED_LANGUAGES: LanguageType[];
 export declare const DubitLogEvents: {
     readonly INSTANCE_CREATING: {
         readonly code: "INSTANCE_CREATING";
@@ -192,24 +301,6 @@ export declare const DubitLogEvents: {
         readonly userMessage: "Failed to recover audio input.";
         readonly description: "Failed to get a new audio track via getUserMedia after the previous one ended.";
     };
-    readonly TRANSCRIPT_FETCHING: {
-        readonly code: "TRANSCRIPT_FETCHING";
-        readonly level: "info";
-        readonly userMessage: "Fetching transcript...";
-        readonly description: "Calling the API to get the complete transcript.";
-    };
-    readonly TRANSCRIPT_FETCH_SUCCESS: {
-        readonly code: "TRANSCRIPT_FETCH_SUCCESS";
-        readonly level: "info";
-        readonly userMessage: "Transcript loaded.";
-        readonly description: "Successfully fetched the complete transcript.";
-    };
-    readonly TRANSCRIPT_FETCH_FAILED: {
-        readonly code: "TRANSCRIPT_FETCH_FAILED";
-        readonly level: "error";
-        readonly userMessage: "Failed to fetch transcript.";
-        readonly description: "Error occurred during the API call to fetch the transcript.";
-    };
     readonly INTERNAL_ERROR: {
         readonly code: "INTERNAL_ERROR";
         readonly level: "error";
@@ -217,113 +308,5 @@ export declare const DubitLogEvents: {
         readonly description: "An unexpected error occurred within the SDK.";
     };
 };
-export interface DubitUserLog {
-    eventCode: string;
-    level: "error" | "warn" | "info" | "debug";
-    userMessage: string;
-    className: string;
-    timestamp: string;
-    internalData?: any;
-    error?: Error;
-}
-export declare function createNewInstance({ token, apiUrl, loggerCallback, }: DubitCreateParams): Promise<DubitInstance>;
-export declare function getSupportedLanguages(): LanguageType[];
-export declare function validateApiKey(apiKey: string): Promise<boolean>;
-export declare function getCompleteTranscript({ instanceId, token, apiUrl, }: {
-    instanceId: string;
-    token: string;
-    apiUrl?: string;
-}): Promise<any>;
-export declare class DubitInstance {
-    instanceId: string;
-    private roomUrl;
-    token: string;
-    private apiUrl;
-    private activeTranslators;
-    private loggerCallback;
-    constructor(instanceId: string, roomUrl: string, token: string, apiUrl: string);
-    setLoggerCallback(callback: ((log: DubitUserLog) => void) | null): void;
-    _log(eventDef: DubitLogEventDef, internalData?: any, originalError?: Error, messageParams?: Record<string, any>): void;
-    addTranslator(params: TranslatorParams): Promise<Translator>;
-    getActiveTranslators(): Map<string, Translator>;
-}
-export declare class Translator {
-    private instanceId;
-    private roomUrl;
-    private token;
-    private apiUrl;
-    private fromLang;
-    private toLang;
-    private voiceType;
-    private version;
-    private keywords;
-    private translationBeep;
-    private hqVoices;
-    private inputAudioTrack;
-    private metadata?;
-    private callObject;
-    private translatedTrack;
-    private participantId;
-    private outputDeviceId;
-    private loggerCallback;
-    private onTranslatedTrackCallback;
-    private onCaptionsCallback;
-    onDestroy?: () => void;
-    getInstanceId: () => string;
-    constructor(params: {
-        instanceId: string;
-        roomUrl: string;
-        token: string;
-        apiUrl: string;
-        loggerCallback?: ((log: DubitUserLog) => void) | null;
-    } & TranslatorParams);
-    private _log;
-    private _getTranslatorLabel;
-    init(): Promise<void>;
-    private handleTrackStarted;
-    private handleParticipantJoined;
-    private handleAppMessage;
-    private handleParticipantLeft;
-    private registerParticipant;
-    private addTranslationBot;
-    onTranslatedTrackReady(callback: (translatedTrack: MediaStreamTrack) => void): void;
-    onCaptions(callback: (caption: CaptionEvent) => void): void;
-    updateInputTrack(newInputTrack: MediaStreamTrack | null): Promise<void>;
-    getParticipantId(): string;
-    getTranslatedTrack(): MediaStreamTrack | null;
-    destroy(): Promise<void>;
-}
-/**
- * Routes a WebRTC audio track to a specific output device using WebAudio
- * This implementation avoids the WebRTC track mixing issue by using the WebAudio API
- */
-export declare function routeTrackToDevice(track: MediaStreamTrack, outputDeviceId: string, elementId: string): object;
-/**
- * Represents a version object with a version string and a label.
- *
- * @example
- * const version1: VersionType = {
- *   version: '1',
- *   label: 'V1 (Flash)'
- * };
- *
- * const version2: VersionType = {
- *   version: '2',
- *   label: 'V2 (Pro)'
- * };
- *
- * const version3: VersionType = {
- *   version: '3',
- *   label: 'V3 (Noise Reduction)'
- * };
- */
-export type VersionType = {
-    version: string;
-    label: string;
-};
-/**
- * An array of available translator versions.
- */
-export declare const SUPPORTED_TRANSLATOR_VERSIONS: VersionType[];
-export declare const SUPPORTED_LANGUAGES: LanguageType[];
+export {};
 //# sourceMappingURL=dubit.d.ts.map

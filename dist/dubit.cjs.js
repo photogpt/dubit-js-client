@@ -88,193 +88,6 @@ function enhanceError(baseMessage, originalError) {
   }
   return enhancedError;
 }
-var DubitLogEvents = {
-  // Instance Lifecycle
-  INSTANCE_CREATING: {
-    code: "INSTANCE_CREATING",
-    level: "info",
-    userMessage: "Connecting to Dubit service...",
-    description: "Attempting to fetch initial meeting details from the API."
-  },
-  INSTANCE_CREATED: {
-    code: "INSTANCE_CREATED",
-    level: "info",
-    userMessage: "Dubit service connected.",
-    description: "Successfully created the DubitInstance after API confirmation."
-  },
-  INSTANCE_CREATE_FAILED: {
-    code: "INSTANCE_CREATE_FAILED",
-    level: "error",
-    userMessage: "Failed to connect to Dubit service. Please check connection or token.",
-    description: "Error occurred during the API call to create a new meeting instance."
-  },
-  LOGGER_CALLBACK_SET: {
-    code: "LOGGER_CALLBACK_SET",
-    level: "debug",
-    userMessage: "Logger configured.",
-    description: "The logger callback function has been successfully set or updated."
-  },
-  LOGGER_CALLBACK_INVALID: {
-    code: "LOGGER_CALLBACK_INVALID",
-    level: "warn",
-    userMessage: "Invalid logger configuration provided.",
-    description: "An invalid value was provided for the logger callback."
-  },
-  // Translator Lifecycle
-  TRANSLATOR_ADDING: {
-    code: "TRANSLATOR_ADDING",
-    level: "info",
-    userMessage: "Adding translator...",
-    description: "Starting the process to add a new Translator instance."
-  },
-  TRANSLATOR_INITIALIZING: {
-    code: "TRANSLATOR_INITIALIZING",
-    level: "info",
-    userMessage: "Initializing translation session...",
-    description: "Creating the underlying call object and preparing to join the room."
-  },
-  TRANSLATOR_INIT_FAILED_CALL_OBJECT: {
-    code: "TRANSLATOR_INIT_FAILED_CALL_OBJECT",
-    level: "error",
-    userMessage: "Failed to create translation session component.",
-    description: "Error creating the Daily call object."
-  },
-  TRANSLATOR_JOINING_ROOM: {
-    code: "TRANSLATOR_JOINING_ROOM",
-    level: "info",
-    userMessage: "Connecting to translation room...",
-    description: "Attempting to join the Daily room."
-  },
-  TRANSLATOR_JOIN_FAILED: {
-    code: "TRANSLATOR_JOIN_FAILED",
-    level: "error",
-    userMessage: "Failed to connect to translation room.",
-    description: "Error joining the Daily room."
-  },
-  TRANSLATOR_REGISTERING: {
-    code: "TRANSLATOR_REGISTERING",
-    level: "debug",
-    userMessage: "Registering translator participant...",
-    description: "Calling the API to register the local participant for translation."
-  },
-  TRANSLATOR_REGISTER_FAILED: {
-    code: "TRANSLATOR_REGISTER_FAILED",
-    level: "error",
-    userMessage: "Failed to register translator participant.",
-    description: "Error during the participant registration API call."
-  },
-  TRANSLATOR_REQUESTING: {
-    code: "TRANSLATOR_REQUESTING",
-    level: "info",
-    userMessage: "Requesting translator from {fromLang} to {toLang}...",
-    description: "Calling the API to request the translator service to join the room."
-  },
-  TRANSLATOR_REQUEST_FAILED: {
-    code: "TRANSLATOR_REQUEST_FAILED",
-    level: "error",
-    userMessage: "Failed to request {fromLang} to {toLang} translator.",
-    description: "Error during the API call to add the translation service."
-  },
-  TRANSLATOR_PARTICIPANT_JOINED: {
-    code: "TRANSLATOR_PARTICIPANT_JOINED",
-    level: "debug",
-    userMessage: "Translator participant connected.",
-    description: "The remote translator participant has joined the Daily room."
-  },
-  TRANSLATOR_TRACK_READY: {
-    code: "TRANSLATOR_TRACK_READY",
-    level: "info",
-    userMessage: "Translator ready ({fromLang} to {toLang}).",
-    description: "The translated audio track from the translator service is now available."
-  },
-  TRANSLATOR_CAPTIONS_READY: {
-    code: "TRANSLATOR_CAPTIONS_READY",
-    level: "debug",
-    userMessage: "Captions callback configured.",
-    description: "The caption callback has been set by the user."
-  },
-  TRANSLATOR_INIT_COMPLETE: {
-    code: "TRANSLATOR_INIT_COMPLETE",
-    level: "info",
-    userMessage: "Translator initialized.",
-    description: "The core initialization process for the translator completed successfully (service requested, event listeners set)."
-  },
-  TRANSLATOR_PARTICIPANT_LEFT: {
-    code: "TRANSLATOR_PARTICIPANT_LEFT",
-    level: "warn",
-    userMessage: "Translator participant disconnected.",
-    description: "The remote translator participant has left the room."
-  },
-  TRANSLATOR_DESTROYED: {
-    code: "TRANSLATOR_DESTROYED",
-    level: "info",
-    userMessage: "Translator stopped.",
-    description: "The translator instance has been destroyed and left the room."
-  },
-  TRANSLATOR_REMOVED: {
-    code: "TRANSLATOR_REMOVED",
-    level: "info",
-    userMessage: "Translator removed from instance.",
-    description: "Translator instance removed from the DubitInstance active translators map."
-  },
-  // Translator Actions
-  INPUT_TRACK_UPDATING: {
-    code: "INPUT_TRACK_UPDATING",
-    level: "debug",
-    userMessage: "Updating audio input...",
-    description: "Attempting to update the input audio track for the translator."
-  },
-  INPUT_TRACK_UPDATED: {
-    code: "INPUT_TRACK_UPDATED",
-    level: "info",
-    userMessage: "Audio input updated.",
-    description: "Successfully updated the input audio track."
-  },
-  INPUT_TRACK_UPDATE_FAILED: {
-    code: "INPUT_TRACK_UPDATE_FAILED",
-    level: "error",
-    userMessage: "Failed to update audio input.",
-    description: "An error occurred while updating the input audio track."
-  },
-  INPUT_TRACK_ENDED_RECOVERING: {
-    code: "INPUT_TRACK_ENDED_RECOVERING",
-    level: "warn",
-    userMessage: "Audio input ended unexpectedly, attempting recovery...",
-    description: "The provided input track ended; attempting to get a new one via getUserMedia."
-  },
-  INPUT_TRACK_RECOVERY_FAILED: {
-    code: "INPUT_TRACK_RECOVERY_FAILED",
-    level: "error",
-    userMessage: "Failed to recover audio input.",
-    description: "Failed to get a new audio track via getUserMedia after the previous one ended."
-  },
-  // Other Features
-  TRANSCRIPT_FETCHING: {
-    code: "TRANSCRIPT_FETCHING",
-    level: "info",
-    userMessage: "Fetching transcript...",
-    description: "Calling the API to get the complete transcript."
-  },
-  TRANSCRIPT_FETCH_SUCCESS: {
-    code: "TRANSCRIPT_FETCH_SUCCESS",
-    level: "info",
-    userMessage: "Transcript loaded.",
-    description: "Successfully fetched the complete transcript."
-  },
-  TRANSCRIPT_FETCH_FAILED: {
-    code: "TRANSCRIPT_FETCH_FAILED",
-    level: "error",
-    userMessage: "Failed to fetch transcript.",
-    description: "Error occurred during the API call to fetch the transcript."
-  },
-  // Generic Error (Fallback)
-  INTERNAL_ERROR: {
-    code: "INTERNAL_ERROR",
-    level: "error",
-    userMessage: "An internal error occurred.",
-    description: "An unexpected error occurred within the SDK."
-  }
-};
 function formatUserMessage(template, params) {
   if (!params) return template;
   return template.replace(/\{(\w+)\}/g, function (_, key) {
@@ -1396,6 +1209,174 @@ var SUPPORTED_LANGUAGES = [{
   langCode: "vi",
   label: "Vietnamese"
 }];
+var DubitLogEvents = {
+  // Instance Lifecycle
+  INSTANCE_CREATING: {
+    code: "INSTANCE_CREATING",
+    level: "info",
+    userMessage: "Connecting to Dubit service...",
+    description: "Attempting to fetch initial meeting details from the API."
+  },
+  INSTANCE_CREATED: {
+    code: "INSTANCE_CREATED",
+    level: "info",
+    userMessage: "Dubit service connected.",
+    description: "Successfully created the DubitInstance after API confirmation."
+  },
+  INSTANCE_CREATE_FAILED: {
+    code: "INSTANCE_CREATE_FAILED",
+    level: "error",
+    userMessage: "Failed to connect to Dubit service. Please check connection or token.",
+    description: "Error occurred during the API call to create a new meeting instance."
+  },
+  LOGGER_CALLBACK_SET: {
+    code: "LOGGER_CALLBACK_SET",
+    level: "debug",
+    userMessage: "Logger configured.",
+    description: "The logger callback function has been successfully set or updated."
+  },
+  LOGGER_CALLBACK_INVALID: {
+    code: "LOGGER_CALLBACK_INVALID",
+    level: "warn",
+    userMessage: "Invalid logger configuration provided.",
+    description: "An invalid value was provided for the logger callback."
+  },
+  // Translator Lifecycle
+  TRANSLATOR_ADDING: {
+    code: "TRANSLATOR_ADDING",
+    level: "info",
+    userMessage: "Adding translator...",
+    description: "Starting the process to add a new Translator instance."
+  },
+  TRANSLATOR_INITIALIZING: {
+    code: "TRANSLATOR_INITIALIZING",
+    level: "info",
+    userMessage: "Initializing translation session...",
+    description: "Creating the underlying call object and preparing to join the room."
+  },
+  TRANSLATOR_INIT_FAILED_CALL_OBJECT: {
+    code: "TRANSLATOR_INIT_FAILED_CALL_OBJECT",
+    level: "error",
+    userMessage: "Failed to create translation session component.",
+    description: "Error creating the Daily call object."
+  },
+  TRANSLATOR_JOINING_ROOM: {
+    code: "TRANSLATOR_JOINING_ROOM",
+    level: "info",
+    userMessage: "Connecting to translation room...",
+    description: "Attempting to join the Daily room."
+  },
+  TRANSLATOR_JOIN_FAILED: {
+    code: "TRANSLATOR_JOIN_FAILED",
+    level: "error",
+    userMessage: "Failed to connect to translation room.",
+    description: "Error joining the Daily room."
+  },
+  TRANSLATOR_REGISTERING: {
+    code: "TRANSLATOR_REGISTERING",
+    level: "debug",
+    userMessage: "Registering translator participant...",
+    description: "Calling the API to register the local participant for translation."
+  },
+  TRANSLATOR_REGISTER_FAILED: {
+    code: "TRANSLATOR_REGISTER_FAILED",
+    level: "error",
+    userMessage: "Failed to register translator participant.",
+    description: "Error during the participant registration API call."
+  },
+  TRANSLATOR_REQUESTING: {
+    code: "TRANSLATOR_REQUESTING",
+    level: "info",
+    userMessage: "Requesting translator from {fromLang} to {toLang}...",
+    description: "Calling the API to request the translator service to join the room."
+  },
+  TRANSLATOR_REQUEST_FAILED: {
+    code: "TRANSLATOR_REQUEST_FAILED",
+    level: "error",
+    userMessage: "Failed to request {fromLang} to {toLang} translator.",
+    description: "Error during the API call to add the translation service."
+  },
+  TRANSLATOR_PARTICIPANT_JOINED: {
+    code: "TRANSLATOR_PARTICIPANT_JOINED",
+    level: "debug",
+    userMessage: "Translator participant connected.",
+    description: "The remote translator participant has joined the Daily room."
+  },
+  TRANSLATOR_TRACK_READY: {
+    code: "TRANSLATOR_TRACK_READY",
+    level: "info",
+    userMessage: "Translator ready ({fromLang} to {toLang}).",
+    description: "The translated audio track from the translator service is now available."
+  },
+  TRANSLATOR_CAPTIONS_READY: {
+    code: "TRANSLATOR_CAPTIONS_READY",
+    level: "debug",
+    userMessage: "Captions callback configured.",
+    description: "The caption callback has been set by the user."
+  },
+  TRANSLATOR_INIT_COMPLETE: {
+    code: "TRANSLATOR_INIT_COMPLETE",
+    level: "info",
+    userMessage: "Translator initialized.",
+    description: "The core initialization process for the translator completed successfully (service requested, event listeners set)."
+  },
+  TRANSLATOR_PARTICIPANT_LEFT: {
+    code: "TRANSLATOR_PARTICIPANT_LEFT",
+    level: "warn",
+    userMessage: "Translator participant disconnected.",
+    description: "The remote translator participant has left the room."
+  },
+  TRANSLATOR_DESTROYED: {
+    code: "TRANSLATOR_DESTROYED",
+    level: "info",
+    userMessage: "Translator stopped.",
+    description: "The translator instance has been destroyed and left the room."
+  },
+  TRANSLATOR_REMOVED: {
+    code: "TRANSLATOR_REMOVED",
+    level: "info",
+    userMessage: "Translator removed from instance.",
+    description: "Translator instance removed from the DubitInstance active translators map."
+  },
+  // Translator Actions
+  INPUT_TRACK_UPDATING: {
+    code: "INPUT_TRACK_UPDATING",
+    level: "debug",
+    userMessage: "Updating audio input...",
+    description: "Attempting to update the input audio track for the translator."
+  },
+  INPUT_TRACK_UPDATED: {
+    code: "INPUT_TRACK_UPDATED",
+    level: "info",
+    userMessage: "Audio input updated.",
+    description: "Successfully updated the input audio track."
+  },
+  INPUT_TRACK_UPDATE_FAILED: {
+    code: "INPUT_TRACK_UPDATE_FAILED",
+    level: "error",
+    userMessage: "Failed to update audio input.",
+    description: "An error occurred while updating the input audio track."
+  },
+  INPUT_TRACK_ENDED_RECOVERING: {
+    code: "INPUT_TRACK_ENDED_RECOVERING",
+    level: "warn",
+    userMessage: "Audio input ended unexpectedly, attempting recovery...",
+    description: "The provided input track ended; attempting to get a new one via getUserMedia."
+  },
+  INPUT_TRACK_RECOVERY_FAILED: {
+    code: "INPUT_TRACK_RECOVERY_FAILED",
+    level: "error",
+    userMessage: "Failed to recover audio input.",
+    description: "Failed to get a new audio track via getUserMedia after the previous one ended."
+  },
+  // Generic Error (Fallback)
+  INTERNAL_ERROR: {
+    code: "INTERNAL_ERROR",
+    level: "error",
+    userMessage: "An internal error occurred.",
+    description: "An unexpected error occurred within the SDK."
+  }
+};
 
 exports.DubitInstance = DubitInstance;
 exports.DubitLogEvents = DubitLogEvents;
