@@ -163,13 +163,47 @@
     function getSupportedLanguages() {
       return SUPPORTED_LANGUAGES;
     }
+    function validateApiKey(apiKey) {
+      var _a;
+      return __awaiter(this, void 0, void 0, function () {
+        var response, result, error_2, completeError;
+        return __generator(this, function (_b) {
+          switch (_b.label) {
+            case 0:
+              _b.trys.push([0, 3,, 4]);
+              return [4 /*yield*/, fetch("".concat(API_URL, "/user/validate/").concat(apiKey), {
+                method: "GET",
+                headers: {
+                  "Content-Type": "application/json"
+                }
+              })];
+            case 1:
+              response = _b.sent();
+              if (!response.ok) {
+                throw new Error("HTTP error: ".concat(response.status));
+              }
+              return [4 /*yield*/, response.json()];
+            case 2:
+              result = _b.sent();
+              return [2 /*return*/, ((_a = result.data) === null || _a === void 0 ? void 0 : _a.is_exists) || false];
+            case 3:
+              error_2 = _b.sent();
+              completeError = enhanceError("Unable to validate API key. Please check your network connection and API key", error_2);
+              console.error("dubit.validateApiKey error:", completeError);
+              throw completeError;
+            case 4:
+              return [2 /*return*/];
+          }
+        });
+      });
+    }
     function getCompleteTranscript(_a) {
       var instanceId = _a.instanceId,
         token = _a.token,
         _b = _a.apiUrl,
         apiUrl = _b === void 0 ? API_URL : _b;
       return __awaiter(this, void 0, void 0, function () {
-        var response, errorData, errorMessage, error_2;
+        var response, errorData, errorMessage, error_3;
         return __generator(this, function (_c) {
           switch (_c.label) {
             case 0:
@@ -192,9 +226,9 @@
             case 3:
               return [2 /*return*/, response.json()];
             case 4:
-              error_2 = _c.sent();
-              console.error("dubit.getCompleteTranscript error:", error_2);
-              throw error_2;
+              error_3 = _c.sent();
+              console.error("dubit.getCompleteTranscript error:", error_3);
+              throw error_3;
             case 5:
               return [2 /*return*/];
           }
@@ -264,7 +298,7 @@
       };
       DubitInstance.prototype.addTranslator = function (params) {
         return __awaiter(this, void 0, void 0, function () {
-          var validationError, translator, error_3;
+          var validationError, translator, error_4;
           var _this = this;
           return __generator(this, function (_a) {
             switch (_a.label) {
@@ -300,12 +334,12 @@
                 });
                 return [2 /*return*/, translator];
               case 3:
-                error_3 = _a.sent();
+                error_4 = _a.sent();
                 this._log("error", "DubitInstance", "Failed to initialize translator", {
-                  error: error_3.message,
+                  error: error_4.message,
                   params: params
                 });
-                return [2 /*return*/, Promise.reject(error_3)];
+                return [2 /*return*/, Promise.reject(error_4)];
               case 4:
                 return [2 /*return*/];
             }
@@ -374,7 +408,7 @@
       };
       Translator.prototype.init = function () {
         return __awaiter(this, void 0, void 0, function () {
-          var audioSource, error_4, participants, error_5;
+          var audioSource, error_5, participants, error_6;
           var _this = this;
           return __generator(this, function (_a) {
             switch (_a.label) {
@@ -421,12 +455,12 @@
                 });
                 return [3 /*break*/, 4];
               case 3:
-                error_4 = _a.sent();
+                error_5 = _a.sent();
                 this._log("error", "Failed to join call", {
-                  error: error_4.message,
+                  error: error_5.message,
                   roomUrl: this.roomUrl
                 });
-                throw error_4;
+                throw error_5;
               case 4:
                 participants = this.callObject.participants();
                 this.participantId = participants.local.session_id;
@@ -449,11 +483,11 @@
                 });
                 return [3 /*break*/, 9];
               case 8:
-                error_5 = _a.sent();
+                error_6 = _a.sent();
                 this._log("error", "Error registering participant or requesting bot", {
-                  error: error_5.message
+                  error: error_6.message
                 });
-                throw error_5;
+                throw error_6;
               case 9:
                 this.callObject.on("track-started", function (event) {
                   var _a;
@@ -522,7 +556,7 @@
       // Register local participant
       Translator.prototype.registerParticipant = function (participantId) {
         return __awaiter(this, void 0, void 0, function () {
-          var response, errorData, errorMessage, error_6;
+          var response, errorData, errorMessage, error_7;
           return __generator(this, function (_a) {
             switch (_a.label) {
               case 0:
@@ -554,11 +588,11 @@
                 });
                 return [3 /*break*/, 5];
               case 4:
-                error_6 = _a.sent();
+                error_7 = _a.sent();
                 this._log("error", "Error registering participant", {
-                  error: error_6.message
+                  error: error_7.message
                 });
-                throw error_6;
+                throw error_7;
               case 5:
                 return [2 /*return*/];
             }
@@ -577,7 +611,7 @@
           hqVoices = false;
         }
         return __awaiter(this, void 0, void 0, function () {
-          var response, errorData, errorMessage, error_7;
+          var response, errorData, errorMessage, error_8;
           return __generator(this, function (_a) {
             switch (_a.label) {
               case 0:
@@ -623,11 +657,11 @@
                 });
                 return [3 /*break*/, 5];
               case 4:
-                error_7 = _a.sent();
+                error_8 = _a.sent();
                 this._log("error", "Error adding translator", {
-                  error: error_7.message
+                  error: error_8.message
                 });
-                throw error_7;
+                throw error_8;
               case 5:
                 return [2 /*return*/];
             }
@@ -985,5 +1019,6 @@
     exports.getCompleteTranscript = getCompleteTranscript;
     exports.getSupportedLanguages = getSupportedLanguages;
     exports.routeTrackToDevice = routeTrackToDevice;
+    exports.validateApiKey = validateApiKey;
 
 }));
