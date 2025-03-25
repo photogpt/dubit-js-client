@@ -588,6 +588,12 @@ export function routeTrackToDevice(
     context: audioContext,
     sourceNode: sourceNode,
     pullElement: pullElement,
+    pause: function () {
+      this.pullElement.pause();
+    },
+    resume: function () {
+      this.pullElement.play();
+    },
     stop: function () {
       this.sourceNode.disconnect();
       this.pullElement.pause();
