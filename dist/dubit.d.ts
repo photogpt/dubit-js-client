@@ -4,9 +4,14 @@ export type CaptionEvent = {
     transcript: string;
     type: string;
 };
+/**
+ * For now, only API_KEY is supported as a token.
+ * To generate, go to https://www.dubit.live/dashboard/account?selectedTab=apikey
+ */
 export type DubitCreateParams = {
     token: string;
     apiUrl?: string;
+    loggerCallback?: ((log: DubitLog) => void) | null;
 };
 export type TranslatorParams = {
     fromLang: string;
@@ -24,7 +29,14 @@ export type LanguageType = {
     langCode: string;
     label: string;
 };
-export declare function createNewInstance({ token, apiUrl, }: DubitCreateParams): Promise<DubitInstance>;
+export type DubitLog = {
+    level: "error" | "warn" | "info" | "debug";
+    className: string;
+    message: string;
+    data?: any;
+    timestamp: string;
+};
+export declare function createNewInstance({ token, apiUrl, loggerCallback, }: DubitCreateParams): Promise<DubitInstance>;
 export declare function getSupportedLanguages(): LanguageType[];
 export declare function getCompleteTranscript({ instanceId, token, apiUrl, }: {
     instanceId: string;
@@ -37,8 +49,13 @@ export declare class DubitInstance {
     ownerToken: string;
     private apiUrl;
     private activeTranslators;
+    private loggerCallback;
     constructor(instanceId: string, roomUrl: string, ownerToken: string, apiUrl: string);
-    private validateTranslatorParams;
+    setLoggerCallback(callback: ((log: DubitLog) => void) | null): void;
+    /**
+     * Internal logging method for DubitInstance and its children.
+     */
+    _log(level: "error" | "warn" | "info" | "debug", className: string, message: string, data?: any): void;
     addTranslator(params: TranslatorParams): Promise<Translator>;
 }
 export declare class Translator {
@@ -60,6 +77,7 @@ export declare class Translator {
     private participantId;
     private participantTracks;
     private outputDeviceId;
+    private loggerCallback;
     private onTranslatedTrackCallback;
     private onCaptionsCallback;
     onDestroy?: () => void;
@@ -69,7 +87,13 @@ export declare class Translator {
         roomUrl: string;
         token: string;
         apiUrl: string;
+        loggerCallback?: ((log: DubitLog) => void) | null;
     } & TranslatorParams);
+    /**
+     * Internal logging method for Translator.
+     */
+    private _log;
+    private _getTranslatorLabel;
     init(): Promise<void>;
     private registerParticipant;
     private addTranslationBot;

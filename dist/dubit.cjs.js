@@ -74,16 +74,24 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 };
 
 var API_URL = "https://test-api.dubit.live";
+function enhanceError(baseMessage, originalError) {
+  var enhancedError = new Error("".concat(baseMessage, ". Original error: ").concat((originalError === null || originalError === void 0 ? void 0 : originalError.message) || "No original error message"));
+  enhancedError.stack = originalError === null || originalError === void 0 ? void 0 : originalError.stack;
+  enhancedError.cause = originalError;
+  return enhancedError;
+}
 function createNewInstance(_a) {
   var token = _a.token,
     _b = _a.apiUrl,
-    apiUrl = _b === void 0 ? API_URL : _b;
+    apiUrl = _b === void 0 ? API_URL : _b,
+    _c = _a.loggerCallback,
+    loggerCallback = _c === void 0 ? null : _c;
   return __awaiter(this, void 0, void 0, function () {
-    var response, data, instanceId, roomUrl, error_1;
-    return __generator(this, function (_c) {
-      switch (_c.label) {
+    var response, errorData, errorMessage, data, instanceId, roomUrl, instance, error_1, completeError;
+    return __generator(this, function (_d) {
+      switch (_d.label) {
         case 0:
-          _c.trys.push([0, 3,, 4]);
+          _d.trys.push([0, 5,, 6]);
           return [4 /*yield*/, fetch("".concat(apiUrl, "/meeting/new-meeting"), {
             method: "GET",
             headers: {
@@ -92,21 +100,31 @@ function createNewInstance(_a) {
             }
           })];
         case 1:
-          response = _c.sent();
-          if (!response.ok) {
-            throw new Error("Failed to create meeting room");
-          }
+          response = _d.sent();
+          if (!!response.ok) return [3 /*break*/, 3];
           return [4 /*yield*/, response.json()];
         case 2:
-          data = _c.sent();
+          errorData = _d.sent();
+          errorMessage = (errorData === null || errorData === void 0 ? void 0 : errorData.message) || "Failed to create connection with Dubit servers (HTTP ".concat(response.status, ")");
+          throw new Error(errorMessage);
+        case 3:
+          return [4 /*yield*/, response.json()];
+        case 4:
+          data = _d.sent();
           instanceId = data.meeting_id;
           roomUrl = data.roomUrl;
-          return [2 /*return*/, new DubitInstance(instanceId, roomUrl, token, apiUrl)];
-        case 3:
-          error_1 = _c.sent();
-          console.error("dubit.createNewInstance error:", error_1);
-          throw error_1;
-        case 4:
+          instance = new DubitInstance(instanceId, roomUrl, token, apiUrl);
+          instance.setLoggerCallback(loggerCallback);
+          instance._log("info", "DubitInstance", "Instance created successfully", {
+            instanceId: instanceId
+          });
+          return [2 /*return*/, instance];
+        case 5:
+          error_1 = _d.sent();
+          completeError = enhanceError("Unable to create Dubit instance. Please check your network connection and API token", error_1);
+          console.error("dubit.createNewInstance error:", completeError);
+          throw completeError;
+        case 6:
           return [2 /*return*/];
       }
     });
@@ -121,10 +139,11 @@ function getCompleteTranscript(_a) {
     _b = _a.apiUrl,
     apiUrl = _b === void 0 ? API_URL : _b;
   return __awaiter(this, void 0, void 0, function () {
-    var response;
+    var response, errorData, errorMessage, error_2;
     return __generator(this, function (_c) {
       switch (_c.label) {
         case 0:
+          _c.trys.push([0, 4,, 5]);
           return [4 /*yield*/, fetch("".concat(apiUrl, "/meeting/").concat(instanceId, "/transcripts"), {
             method: "GET",
             headers: {
@@ -134,58 +153,119 @@ function getCompleteTranscript(_a) {
           })];
         case 1:
           response = _c.sent();
-          if (!response.ok) {
-            throw new Error("Failed to fetch complete transcript");
-          }
+          if (!!response.ok) return [3 /*break*/, 3];
+          return [4 /*yield*/, response.json()];
+        case 2:
+          errorData = _c.sent();
+          errorMessage = (errorData === null || errorData === void 0 ? void 0 : errorData.message) || "Failed to fetch complete transcript";
+          throw new Error(errorMessage);
+        case 3:
           return [2 /*return*/, response.json()];
+        case 4:
+          error_2 = _c.sent();
+          console.error("dubit.getCompleteTranscript error:", error_2);
+          throw error_2;
+        case 5:
+          return [2 /*return*/];
       }
     });
   });
 }
+function validateTranslatorParams(params) {
+  if (!SUPPORTED_LANGUAGES.map(function (x) {
+    return x.langCode;
+  }).includes(params.fromLang)) {
+    return new Error("Unsupported fromLang: ".concat(params.fromLang, ". Supported from languages: ").concat(SUPPORTED_LANGUAGES.map(function (x) {
+      return x.langCode;
+    })));
+  }
+  if (!SUPPORTED_LANGUAGES.map(function (x) {
+    return x.langCode;
+  }).includes(params.toLang)) {
+    return new Error("Unsupported toLang: ".concat(params.toLang, ". Supported to languages: ").concat(SUPPORTED_LANGUAGES.map(function (x) {
+      return x.langCode;
+    })));
+  }
+  if (params.voiceType !== "male" && params.voiceType !== "female") {
+    return new Error("Unsupported voiceType: ".concat(params.voiceType, ". Supported voice types: male, female"));
+  }
+  if (params.inputAudioTrack === null) {
+    return new Error("inputAudioTrack is required");
+  }
+  if (params.version && !SUPPORTED_TRANSLATOR_VERSIONS.map(function (x) {
+    return x.version;
+  }).includes(params.version)) {
+    return new Error("Unsupported version: ".concat(params.version, ". Supported versions: ").concat(SUPPORTED_TRANSLATOR_VERSIONS));
+  }
+  return null;
+}
 var DubitInstance = /** @class */function () {
   function DubitInstance(instanceId, roomUrl, ownerToken, apiUrl) {
     this.activeTranslators = new Map();
+    this.loggerCallback = null;
     this.instanceId = instanceId;
     this.roomUrl = roomUrl;
     this.ownerToken = ownerToken;
     this.apiUrl = apiUrl;
   }
-  DubitInstance.prototype.validateTranslatorParams = function (params) {
-    if (!SUPPORTED_LANGUAGES.map(function (x) {
-      return x.langCode;
-    }).includes(params.fromLang)) {
-      return new Error("Unsupported fromLang: ".concat(params.fromLang, ". Supported from languages: ").concat(SUPPORTED_LANGUAGES.map(function (x) {
-        return x.langCode;
-      })));
+  DubitInstance.prototype.setLoggerCallback = function (callback) {
+    if (typeof callback === "function" || callback === null) {
+      this.loggerCallback = callback;
+      this._log("debug", "DubitInstance", "Logger callback updated", {
+        callback: !!callback
+      });
+    } else {
+      console.warn("Invalid loggerCallback provided. It should be a function or null.");
+      this.loggerCallback = null;
     }
-    if (!SUPPORTED_LANGUAGES.map(function (x) {
-      return x.langCode;
-    }).includes(params.toLang)) {
-      return new Error("Unsupported toLang: ".concat(params.toLang, ". Supported to languages: ").concat(SUPPORTED_LANGUAGES.map(function (x) {
-        return x.langCode;
-      })));
+  };
+  /**
+   * Internal logging method for DubitInstance and its children.
+   */
+  DubitInstance.prototype._log = function (level, className, message, data) {
+    var logEntry = {
+      level: level,
+      className: className,
+      message: message,
+      data: data,
+      timestamp: new Date().toISOString()
+    };
+    if (this.loggerCallback) {
+      try {
+        this.loggerCallback(logEntry);
+      } catch (error) {
+        console.error("Error in loggerCallback:", error);
+        console.error("Original log message:", logEntry);
+      }
+    } else {
+      var logMessage = "[".concat(logEntry.timestamp, "] [").concat(logEntry.className, "] ").concat(logEntry.level.toUpperCase(), ": ").concat(logEntry.message);
+      switch (level) {
+        case "error":
+          console.error(logMessage, logEntry.data || "");
+          break;
+        case "warn":
+          console.warn(logMessage, logEntry.data || "");
+          break;
+        case "info":
+          console.info(logMessage, logEntry.data || "");
+          break;
+        case "debug":
+          console.debug(logMessage, logEntry.data || "");
+          break;
+        default:
+          console.log(logMessage, logEntry.data || "");
+        // Default level or 'log'
+      }
     }
-    if (params.voiceType !== "male" && params.voiceType !== "female") {
-      return new Error("Unsupported voiceType: ".concat(params.voiceType, ". Supported voice types: male, female"));
-    }
-    if (params.inputAudioTrack === null) {
-      return new Error("inputAudioTrack is required");
-    }
-    if (params.version && !SUPPORTED_TRANSLATOR_VERSIONS.map(function (x) {
-      return x.version;
-    }).includes(params.version)) {
-      return new Error("Unsupported version: ".concat(params.version, ". Supported versions: ").concat(SUPPORTED_TRANSLATOR_VERSIONS));
-    }
-    return null;
   };
   DubitInstance.prototype.addTranslator = function (params) {
     return __awaiter(this, void 0, void 0, function () {
-      var validationError, translator;
+      var validationError, translator, error_3;
       var _this = this;
       return __generator(this, function (_a) {
         switch (_a.label) {
           case 0:
-            validationError = this.validateTranslatorParams(params);
+            validationError = validateTranslatorParams(params);
             if (validationError) {
               return [2 /*return*/, Promise.reject(validationError)];
             }
@@ -193,16 +273,37 @@ var DubitInstance = /** @class */function () {
               instanceId: this.instanceId,
               roomUrl: this.roomUrl,
               token: this.ownerToken,
-              apiUrl: this.apiUrl
+              apiUrl: this.apiUrl,
+              loggerCallback: this.loggerCallback
             }, params));
             translator.onDestroy = function () {
               _this.activeTranslators.delete(translator.getParticipantId());
+              _this._log("info", "DubitInstance", "Translator removed", {
+                participantId: translator.getParticipantId()
+              });
             };
-            return [4 /*yield*/, translator.init()];
+            _a.label = 1;
           case 1:
+            _a.trys.push([1, 3,, 4]);
+            return [4 /*yield*/, translator.init()];
+          case 2:
             _a.sent();
             this.activeTranslators.set(translator.getParticipantId(), translator);
+            this._log("info", "DubitInstance", "Translator added and initialized", {
+              participantId: translator.getParticipantId(),
+              toLang: params.toLang,
+              fromLang: params.fromLang
+            });
             return [2 /*return*/, translator];
+          case 3:
+            error_3 = _a.sent();
+            this._log("error", "DubitInstance", "Failed to initialize translator", {
+              error: error_3.message,
+              params: params
+            });
+            return [2 /*return*/, Promise.reject(error_3)];
+          case 4:
+            return [2 /*return*/];
         }
       });
     });
@@ -221,6 +322,7 @@ var Translator = /** @class */function () {
     this.participantId = "";
     this.participantTracks = new Map();
     this.outputDeviceId = null;
+    this.loggerCallback = null;
     this.onTranslatedTrackCallback = null;
     this.onCaptionsCallback = null;
     this.getInstanceId = function () {
@@ -240,10 +342,62 @@ var Translator = /** @class */function () {
     this.inputAudioTrack = params.inputAudioTrack;
     this.metadata = params.metadata ? safeSerializeMetadata(params.metadata) : {};
     this.outputDeviceId = params.outputDeviceId;
+    this.loggerCallback = params.loggerCallback || null;
   }
+  /**
+   * Internal logging method for Translator.
+   */
+  Translator.prototype._log = function (level, message, data) {
+    var logEntry = {
+      level: level,
+      className: "Translator",
+      message: message,
+      data: data,
+      timestamp: new Date().toISOString()
+    };
+    if (this.loggerCallback) {
+      try {
+        this.loggerCallback(logEntry);
+      } catch (error) {
+        // Explicitly type error as any for catch block
+        console.error("Error in Translator loggerCallback:", error);
+        console.error("Original Translator log message:", logEntry);
+      }
+    } else {
+      // Default console logging for Translator
+      var logMessage = "[".concat(logEntry.timestamp, "] [").concat(logEntry.className, "] ").concat(logEntry.level.toUpperCase(), ": ").concat(logEntry.message);
+      switch (level) {
+        case "error":
+          console.error(logMessage, logEntry.data || "");
+          break;
+        case "warn":
+          console.warn(logMessage, logEntry.data || "");
+          break;
+        case "info":
+          console.info(logMessage, logEntry.data || "");
+          break;
+        case "debug":
+          console.debug(logMessage, logEntry.data || "");
+          break;
+        default:
+          console.log(logMessage, logEntry.data || "");
+      }
+    }
+  };
+  Translator.prototype._getTranslatorLabel = function () {
+    var _this = this;
+    var _a, _b;
+    var fromLangLabel = (_a = SUPPORTED_LANGUAGES.find(function (x) {
+      return x.langCode == _this.fromLang;
+    })) === null || _a === void 0 ? void 0 : _a.label;
+    var toLangLabel = (_b = SUPPORTED_LANGUAGES.find(function (x) {
+      return x.langCode == _this.toLang;
+    })) === null || _b === void 0 ? void 0 : _b.label;
+    return "Translator ".concat(fromLangLabel, " -> ").concat(toLangLabel);
+  };
   Translator.prototype.init = function () {
     return __awaiter(this, void 0, void 0, function () {
-      var audioSource, error_2, participants, error_3;
+      var audioSource, error_4, participants, error_5;
       var _this = this;
       return __generator(this, function (_a) {
         switch (_a.label) {
@@ -254,8 +408,11 @@ var Translator = /** @class */function () {
                 videoSource: false,
                 subscribeToTracksAutomatically: false
               });
+              this._log("debug", "Call object created");
             } catch (error) {
-              console.error("Translator: Failed to create Daily call object", error);
+              this._log("error", "Failed to create Daily call object", {
+                error: error.message
+              });
               throw error;
             }
             _a.label = 1;
@@ -281,17 +438,24 @@ var Translator = /** @class */function () {
             })];
           case 2:
             _a.sent();
+            this._log("info", "Joined Call", {
+              roomUrl: this.roomUrl,
+              audioSource: !!audioSource
+            });
             return [3 /*break*/, 4];
           case 3:
-            error_2 = _a.sent();
-            console.error("Translator: Failed to join the Daily room", error_2);
-            throw error_2;
+            error_4 = _a.sent();
+            this._log("error", "Failed to join call", {
+              error: error_4.message,
+              roomUrl: this.roomUrl
+            });
+            throw error_4;
           case 4:
             participants = this.callObject.participants();
-            if (!participants.local) {
-              throw new Error("Translator: Failed to obtain local participant");
-            }
             this.participantId = participants.local.session_id;
+            this._log("debug", "Local participant info retrieved", {
+              participantId: this.participantId
+            });
             _a.label = 5;
           case 5:
             _a.trys.push([5, 8,, 9]);
@@ -301,23 +465,27 @@ var Translator = /** @class */function () {
             return [4 /*yield*/, this.addTranslationBot(this.roomUrl, this.participantId, this.fromLang, this.toLang, this.voiceType, this.version, this.keywords, this.translationBeep, this.hqVoices)];
           case 7:
             _a.sent();
+            this._log("info", "Requested translator", {
+              participantId: this.participantId,
+              fromLang: this.fromLang,
+              toLang: this.toLang
+            });
             return [3 /*break*/, 9];
           case 8:
-            error_3 = _a.sent();
-            console.error("Translator: Error registering participant or adding bot", error_3);
-            throw error_3;
+            error_5 = _a.sent();
+            this._log("error", "Error registering participant or requesting bot", {
+              error: error_5.message
+            });
+            throw error_5;
           case 9:
             this.callObject.on("track-started", function (event) {
               var _a;
-              var fromLangLabel = SUPPORTED_LANGUAGES.find(function (x) {
-                return x.langCode == _this.fromLang;
-              }).label;
-              var toLangLabel = SUPPORTED_LANGUAGES.find(function (x) {
-                return x.langCode == _this.toLang;
-              }).label;
               // TODO: add better identifier like some kind of id in metadata
-              if (event.track.kind === "audio" && !((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) && event.participant.user_name.includes("Translator ".concat(fromLangLabel, " -> ").concat(toLangLabel))) {
-                console.debug("CallClient: ".concat(_this.callObject.callClientId, " , event:"), event);
+              if (event.track.kind === "audio" && !((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) && event.participant.user_name.includes(_this._getTranslatorLabel())) {
+                _this._log("debug", "Translation track started", {
+                  participantName: event.participant.user_name,
+                  trackId: event.track.id
+                });
                 if (_this.onTranslatedTrackCallback && event.track) {
                   _this.onTranslatedTrackCallback(event.track);
                   _this.translatedTrack = event.track;
@@ -326,20 +494,15 @@ var Translator = /** @class */function () {
             });
             this.callObject.on("participant-joined", function (event) {
               return __awaiter(_this, void 0, void 0, function () {
-                var fromLangLabel, toLangLabel;
-                var _this = this;
                 var _a;
                 return __generator(this, function (_b) {
-                  fromLangLabel = SUPPORTED_LANGUAGES.find(function (x) {
-                    return x.langCode == _this.fromLang;
-                  }).label;
-                  toLangLabel = SUPPORTED_LANGUAGES.find(function (x) {
-                    return x.langCode == _this.toLang;
-                  }).label;
                   if ((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) return [2 /*return*/];
                   // TODO: add better identifier like some kind of id in metadata
-                  if (event.participant.user_name.includes("Translator ".concat(fromLangLabel, " -> ").concat(toLangLabel))) {
-                    console.debug("Subscribing - CallClient: ".concat(this.callObject.callClientId, " , event:"), event);
+                  if (event.participant.user_name.includes(this._getTranslatorLabel())) {
+                    this._log("debug", "Translator joined, connecting audio", {
+                      participantId: event.participant.session_id,
+                      participantName: event.participant.user_name
+                    });
                     this.callObject.updateParticipant(event.participant.session_id, {
                       setSubscribedTracks: {
                         audio: true
@@ -359,12 +522,20 @@ var Translator = /** @class */function () {
                 _this.onCaptionsCallback(data);
               }
             });
-            // Clear output track if a non-local participant (i.e. the bot) leaves.
+            // Clear output track if the bot leaves.
             this.callObject.on("participant-left", function (event) {
-              if (!event.participant.local && _this.translatedTrack) {
+              if (!event.participant.local && event.participant.user_name.includes(_this._getTranslatorLabel()) && _this.translatedTrack) {
                 _this.translatedTrack = null;
-                console.error("Translator: Translation bot left; output track cleared");
+                _this._log("warn", "Translator left; output track cleared", {
+                  participantId: event.participant.session_id,
+                  participantName: event.participant.user_name
+                });
               }
+            });
+            this._log("info", "Translator initialized successfully", {
+              fromLang: this.fromLang,
+              toLang: this.toLang,
+              version: this.version
             });
             return [2 /*return*/];
         }
@@ -374,11 +545,11 @@ var Translator = /** @class */function () {
   // Register local participant
   Translator.prototype.registerParticipant = function (participantId) {
     return __awaiter(this, void 0, void 0, function () {
-      var response, error_4;
+      var response, errorData, errorMessage, error_6;
       return __generator(this, function (_a) {
         switch (_a.label) {
           case 0:
-            _a.trys.push([0, 2,, 3]);
+            _a.trys.push([0, 4,, 5]);
             return [4 /*yield*/, fetch("".concat(this.apiUrl, "/participant"), {
               method: "POST",
               headers: {
@@ -391,15 +562,27 @@ var Translator = /** @class */function () {
             })];
           case 1:
             response = _a.sent();
-            if (!response.ok) {
-              throw new Error("Failed to register participant");
-            }
-            return [3 /*break*/, 3];
+            if (!!response.ok) return [3 /*break*/, 3];
+            return [4 /*yield*/, response.json()];
           case 2:
-            error_4 = _a.sent();
-            console.error("Translator: Error registering participant", error_4);
-            throw error_4;
+            errorData = _a.sent();
+            errorMessage = (errorData === null || errorData === void 0 ? void 0 : errorData.message) || "Failed to register participant";
+            this._log("error", "Failed to register participant", {
+              error: errorMessage
+            });
+            throw new Error(errorMessage);
           case 3:
+            this._log("debug", "Participant registered successfully", {
+              participantId: participantId
+            });
+            return [3 /*break*/, 5];
+          case 4:
+            error_6 = _a.sent();
+            this._log("error", "Error registering participant", {
+              error: error_6.message
+            });
+            throw error_6;
+          case 5:
             return [2 /*return*/];
         }
       });
@@ -417,11 +600,11 @@ var Translator = /** @class */function () {
       hqVoices = false;
     }
     return __awaiter(this, void 0, void 0, function () {
-      var response, error_5;
+      var response, errorData, errorMessage, error_7;
       return __generator(this, function (_a) {
         switch (_a.label) {
           case 0:
-            _a.trys.push([0, 2,, 3]);
+            _a.trys.push([0, 4,, 5]);
             return [4 /*yield*/, fetch("".concat(this.apiUrl, "/meeting/bot/join"), {
               method: "POST",
               headers: {
@@ -444,15 +627,31 @@ var Translator = /** @class */function () {
             })];
           case 1:
             response = _a.sent();
-            if (!response.ok) {
-              throw new Error("Failed to add translation bot");
-            }
-            return [3 /*break*/, 3];
+            if (!!response.ok) return [3 /*break*/, 3];
+            return [4 /*yield*/, response.json()];
           case 2:
-            error_5 = _a.sent();
-            console.error("Translator: Error adding translation bot", error_5);
-            throw error_5;
+            errorData = _a.sent();
+            errorMessage = (errorData === null || errorData === void 0 ? void 0 : errorData.message) || "Failed to request translator";
+            this._log("error", "Failed to request translator", {
+              error: errorMessage
+            });
+            throw new Error(errorMessage);
           case 3:
+            this._log("debug", "Translator requested successfully", {
+              roomUrl: roomUrl,
+              participantId: participantId,
+              fromLanguage: fromLanguage,
+              toLanguage: toLanguage,
+              version: version
+            });
+            return [3 /*break*/, 5];
+          case 4:
+            error_7 = _a.sent();
+            this._log("error", "Error adding translator", {
+              error: error_7.message
+            });
+            throw error_7;
+          case 5:
             return [2 /*return*/];
         }
       });
@@ -462,18 +661,21 @@ var Translator = /** @class */function () {
     this.onTranslatedTrackCallback = callback;
     if (this.translatedTrack) {
       callback(this.translatedTrack);
+      this._log("debug", "onTranslatedTrackReady callback invoked immediately as track is already available");
     }
   };
   Translator.prototype.onCaptions = function (callback) {
     this.onCaptionsCallback = callback;
+    this._log("debug", "onCaptions callback set");
   };
   Translator.prototype.updateInputTrack = function (newInputTrack) {
     return __awaiter(this, void 0, void 0, function () {
-      var stream;
+      var stream, e_1;
       return __generator(this, function (_a) {
         switch (_a.label) {
           case 0:
             if (!this.callObject) {
+              this._log("error", "callObject not initialized when updating input audio track");
               throw new Error("Translator: callObject not initialized");
             }
             if (!!newInputTrack) return [3 /*break*/, 2];
@@ -482,26 +684,42 @@ var Translator = /** @class */function () {
             })];
           case 1:
             _a.sent();
+            this._log("info", "Input audio track updated to false (muted)");
             return [2 /*return*/];
           case 2:
             this.callObject.setLocalAudio(true);
-            if (!(newInputTrack.readyState === "ended")) return [3 /*break*/, 4];
+            if (!(newInputTrack.readyState === "ended")) return [3 /*break*/, 6];
+            _a.label = 3;
+          case 3:
+            _a.trys.push([3, 5,, 6]);
             return [4 /*yield*/, navigator.mediaDevices.getUserMedia({
               audio: {
                 deviceId: newInputTrack.id
               }
             })];
-          case 3:
+          case 4:
             stream = _a.sent();
             newInputTrack = stream.getAudioTracks()[0];
-            _a.label = 4;
-          case 4:
+            this._log("warn", "Input audio track was ended, obtained a new track from getUserMedia", {
+              trackId: newInputTrack.id
+            });
+            return [3 /*break*/, 6];
+          case 5:
+            e_1 = _a.sent();
+            this._log("error", "Failed to get new audio track from getUserMedia when updating input track", {
+              error: e_1.message
+            });
+            return [2 /*return*/];
+          case 6:
             this.inputAudioTrack = newInputTrack;
             return [4 /*yield*/, this.callObject.setInputDevicesAsync({
               audioSource: newInputTrack
             })];
-          case 5:
+          case 7:
             _a.sent();
+            this._log("info", "Input audio track updated", {
+              trackId: newInputTrack.id
+            });
             return [2 /*return*/];
         }
       });
@@ -518,10 +736,15 @@ var Translator = /** @class */function () {
       this.callObject.leave();
       this.callObject.destroy();
       this.callObject = null;
+      this._log("info", "Call object destroyed and left the session");
     }
     if (this.onDestroy) {
       this.onDestroy();
+      this._log("debug", "onDestroy callback invoked");
     }
+    this._log("info", "Translator instance destroyed", {
+      participantId: this.participantId
+    });
   };
   return Translator;
 }();

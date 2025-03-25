@@ -506,9 +506,6 @@ export class Translator {
         if (this.onTranslatedTrackCallback && event.track) {
           this.onTranslatedTrackCallback(event.track);
           this.translatedTrack = event.track;
-          this._log("info", "Ready", {
-            trackId: event.track.id,
-          });
         }
       }
     });
@@ -643,13 +640,13 @@ export class Translator {
       if (!response.ok) {
         const errorData = await response.json();
         const errorMessage =
-          errorData?.message || "Failed to add translation bot";
-        this._log("error", "Failed to add translation bot", {
+          errorData?.message || "Failed to request translator";
+        this._log("error", "Failed to request translator", {
           error: errorMessage,
         });
         throw new Error(errorMessage);
       }
-      this._log("debug", "Translation bot added successfully", {
+      this._log("debug", "Translator requested successfully", {
         roomUrl: roomUrl,
         participantId: participantId,
         fromLanguage: fromLanguage,
@@ -657,7 +654,7 @@ export class Translator {
         version: version,
       });
     } catch (error: any) {
-      this._log("error", "Error adding translation bot", {
+      this._log("error", "Error adding translator", {
         error: error.message,
       });
       throw error;
