@@ -16,7 +16,7 @@ export type DubitCreateParams = {
 export type TranslatorParams = {
     fromLang: string;
     toLang: string;
-    voiceType: "male" | "female";
+    voiceType: 'male' | 'female';
     version?: string;
     keywords?: boolean;
     hqVoices?: boolean;
@@ -31,13 +31,13 @@ export type LanguageType = {
 };
 interface DubitLogEventDef {
     readonly code: string;
-    readonly level: "error" | "warn" | "info" | "debug";
+    readonly level: 'error' | 'warn' | 'info' | 'debug';
     readonly userMessage: string;
     readonly description: string;
 }
 export interface DubitUserLog {
     eventCode: string;
-    level: "error" | "warn" | "info" | "debug";
+    level: 'error' | 'warn' | 'info' | 'debug';
     userMessage: string;
     className: string;
     timestamp: string;
