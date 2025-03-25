@@ -299,6 +299,7 @@ export class Translator {
   private participantId = "";
   private participantTracks: Map<string, MediaStreamTrack> = new Map();
   private outputDeviceId: string | null = null;
+  private loggerCallback: ((log: DubitLog) => void) | null = null;
 
   private onTranslatedTrackCallback:
     | ((track: MediaStreamTrack) => void)
@@ -315,6 +316,7 @@ export class Translator {
       roomUrl: string;
       token: string;
       apiUrl: string;
+      loggerCallback?: ((log: DubitLog) => void) | null;
     } & TranslatorParams,
   ) {
     this.instanceId = params.instanceId;
@@ -333,6 +335,63 @@ export class Translator {
       ? safeSerializeMetadata(params.metadata)
       : {};
     this.outputDeviceId = params.outputDeviceId;
+    this.loggerCallback = params.loggerCallback || null;
+  }
+
+  /**
+   * Internal logging method for Translator.
+   */
+  private _log(
+    level: "error" | "warn" | "info" | "debug",
+    message: string,
+    data?: any,
+  ) {
+    const logEntry: DubitLog = {
+      level,
+      className: "Translator",
+      message,
+      data,
+      timestamp: new Date().toISOString(),
+    };
+
+    if (this.loggerCallback) {
+      try {
+        this.loggerCallback(logEntry);
+      } catch (error: any) {
+        // Explicitly type error as any for catch block
+        console.error("Error in Translator loggerCallback:", error);
+        console.error("Original Translator log message:", logEntry);
+      }
+    } else {
+      // Default console logging for Translator
+      const logMessage = `[${logEntry.timestamp}] [${logEntry.className}] ${logEntry.level.toUpperCase()}: ${logEntry.message}`;
+      switch (level) {
+        case "error":
+          console.error(logMessage, logEntry.data || "");
+          break;
+        case "warn":
+          console.warn(logMessage, logEntry.data || "");
+          break;
+        case "info":
+          console.info(logMessage, logEntry.data || "");
+          break;
+        case "debug":
+          console.debug(logMessage, logEntry.data || "");
+          break;
+        default:
+          console.log(logMessage, logEntry.data || "");
+      }
+    }
+  }
+
+  private _getTranslatorLabel(): string {
+    let fromLangLabel = SUPPORTED_LANGUAGES.find(
+      (x) => x.langCode == this.fromLang,
+    )?.label;
+    let toLangLabel = SUPPORTED_LANGUAGES.find(
+      (x) => x.langCode == this.toLang,
+    )?.label;
+    return `Translator ${fromLangLabel} -> ${toLangLabel}`;
   }
 
   public async init(): Promise<void> {
@@ -342,8 +401,11 @@ export class Translator {
         videoSource: false,
         subscribeToTracksAutomatically: false,
       });
+      this._log("debug", "Call object created");
     } catch (error) {
-      console.error("Translator: Failed to create Daily call object", error);
+      this._log("error", "Failed to create Daily call object", {
+        error: error.message,
+      });
       throw error;
     }
 
@@ -367,18 +429,25 @@ export class Translator {
           },
         },
       });
+      this._log("info", "Joined Call", {
+        roomUrl: this.roomUrl,
+        audioSource: !!audioSource,
+      });
     } catch (error) {
-      console.error("Translator: Failed to join the Daily room", error);
+      this._log("error", "Failed to join call", {
+        error: error.message,
+        roomUrl: this.roomUrl,
+      });
       throw error;
     }
 
     // Retrieve local participant info.
     const participants: DailyParticipantsObject =
       this.callObject.participants();
-    if (!participants.local) {
-      throw new Error("Translator: Failed to obtain local participant");
-    }
     this.participantId = participants.local.session_id;
+    this._log("debug", "Local participant info retrieved", {
+      participantId: this.participantId,
+    });
 
     try {
       await this.registerParticipant(this.participantId);
@@ -393,38 +462,36 @@ export class Translator {
         this.translationBeep,
         this.hqVoices,
       );
+      this._log("info", "Requested translator", {
+        participantId: this.participantId,
+        fromLang: this.fromLang,
+        toLang: this.toLang,
+      });
     } catch (error) {
-      console.error(
-        "Translator: Error registering participant or adding bot",
-        error,
-      );
+      this._log("error", "Error registering participant or requesting bot", {
+        error: error.message,
+      });
       throw error;
     }
 
     this.callObject.on("track-started", (event: DailyEventObjectTrack) => {
-      let fromLangLabel = SUPPORTED_LANGUAGES.find(
-        (x) => x.langCode == this.fromLang,
-      ).label;
-      let toLangLabel = SUPPORTED_LANGUAGES.find(
-        (x) => x.langCode == this.toLang,
-      ).label;
-
       // TODO: add better identifier like some kind of id in metadata
       if (
         event.track.kind === "audio" &&
         !event?.participant?.local &&
-        event.participant.user_name.includes(
-          `Translator ${fromLangLabel} -> ${toLangLabel}`,
-        )
+        event.participant.user_name.includes(this._getTranslatorLabel())
       ) {
-        console.debug(
-          `CallClient: ${this.callObject.callClientId} , event:`,
-          event,
-        );
+        this._log("debug", "Translation track started", {
+          participantName: event.participant.user_name,
+          trackId: event.track.id,
+        });
 
         if (this.onTranslatedTrackCallback && event.track) {
           this.onTranslatedTrackCallback(event.track);
           this.translatedTrack = event.track;
+          this._log("info", "Ready", {
+            trackId: event.track.id,
+          });
         }
       }
     });
@@ -432,24 +499,14 @@ export class Translator {
     this.callObject.on(
       "participant-joined",
       async (event: DailyEventObjectParticipant) => {
-        let fromLangLabel = SUPPORTED_LANGUAGES.find(
-          (x) => x.langCode == this.fromLang,
-        ).label;
-        let toLangLabel = SUPPORTED_LANGUAGES.find(
-          (x) => x.langCode == this.toLang,
-        ).label;
         if (event?.participant?.local) return;
 
         // TODO: add better identifier like some kind of id in metadata
-        if (
-          event.participant.user_name.includes(
-            `Translator ${fromLangLabel} -> ${toLangLabel}`,
-          )
-        ) {
-          console.debug(
-            `Subscribing - CallClient: ${this.callObject.callClientId} , event:`,
-            event,
-          );
+        if (event.participant.user_name.includes(this._getTranslatorLabel())) {
+          this._log("debug", "Translator joined, connecting audio", {
+            participantId: event.participant.session_id,
+            participantName: event.participant.user_name,
+          });
           this.callObject.updateParticipant(event.participant.session_id, {
             setSubscribedTracks: {
               audio: true,
@@ -478,18 +535,28 @@ export class Translator {
       }
     });
 
-    // Clear output track if a non-local participant (i.e. the bot) leaves.
+    // Clear output track if the bot leaves.
     this.callObject.on(
       "participant-left",
       (event: DailyEventObjectParticipantLeft) => {
-        if (!event.participant.local && this.translatedTrack) {
+        if (
+          !event.participant.local &&
+          event.participant.user_name.includes(this._getTranslatorLabel()) &&
+          this.translatedTrack
+        ) {
           this.translatedTrack = null;
-          console.error(
-            "Translator: Translation bot left; output track cleared",
-          );
+          this._log("warn", "Translator left; output track cleared", {
+            participantId: event.participant.session_id,
+            participantName: event.participant.user_name,
+          });
         }
       },
     );
+    this._log("info", "Translator initialized successfully", {
+      fromLang: this.fromLang,
+      toLang: this.toLang,
+      version: this.version,
+    });
   }
 
   // Register local participant
@@ -504,10 +571,21 @@ export class Translator {
         body: JSON.stringify({ id: participantId }),
       });
       if (!response.ok) {
-        throw new Error("Failed to register participant");
+        const errorData = await response.json();
+        const errorMessage =
+          errorData?.message || "Failed to register participant";
+        this._log("error", "Failed to register participant", {
+          error: errorMessage,
+        });
+        throw new Error(errorMessage);
       }
-    } catch (error) {
-      console.error("Translator: Error registering participant", error);
+      this._log("debug", "Participant registered successfully", {
+        participantId: participantId,
+      });
+    } catch (error: any) {
+      this._log("error", "Error registering participant", {
+        error: error.message,
+      });
       throw error;
     }
   }
@@ -546,10 +624,25 @@ export class Translator {
         }),
       });
       if (!response.ok) {
-        throw new Error("Failed to add translation bot");
+        const errorData = await response.json();
+        const errorMessage =
+          errorData?.message || "Failed to add translation bot";
+        this._log("error", "Failed to add translation bot", {
+          error: errorMessage,
+        });
+        throw new Error(errorMessage);
       }
-    } catch (error) {
-      console.error("Translator: Error adding translation bot", error);
+      this._log("debug", "Translation bot added successfully", {
+        roomUrl: roomUrl,
+        participantId: participantId,
+        fromLanguage: fromLanguage,
+        toLanguage: toLanguage,
+        version: version,
+      });
+    } catch (error: any) {
+      this._log("error", "Error adding translation bot", {
+        error: error.message,
+      });
       throw error;
     }
   }
@@ -560,32 +653,59 @@ export class Translator {
     this.onTranslatedTrackCallback = callback;
     if (this.translatedTrack) {
       callback(this.translatedTrack);
+      this._log(
+        "debug",
+        "onTranslatedTrackReady callback invoked immediately as track is already available",
+      );
     }
   }
 
   public onCaptions(callback: (caption: CaptionEvent) => void): void {
     this.onCaptionsCallback = callback;
+    this._log("debug", "onCaptions callback set");
   }
 
   public async updateInputTrack(
     newInputTrack: MediaStreamTrack | null,
   ): Promise<void> {
     if (!this.callObject) {
+      this._log(
+        "error",
+        "callObject not initialized when updating input audio track",
+      );
       throw new Error("Translator: callObject not initialized");
     }
     if (!newInputTrack) {
       await this.callObject.setInputDevicesAsync({ audioSource: false });
+      this._log("info", "Input audio track updated to false (muted)");
       return;
     }
     this.callObject.setLocalAudio(true);
     if (newInputTrack.readyState === "ended") {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: newInputTrack.id },
-      });
-      newInputTrack = stream.getAudioTracks()[0];
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { deviceId: newInputTrack.id },
+        });
+        newInputTrack = stream.getAudioTracks()[0];
+        this._log(
+          "warn",
+          "Input audio track was ended, obtained a new track from getUserMedia",
+          { trackId: newInputTrack.id },
+        );
+      } catch (e: any) {
+        this._log(
+          "error",
+          "Failed to get new audio track from getUserMedia when updating input track",
+          { error: e.message },
+        );
+        return;
+      }
     }
     this.inputAudioTrack = newInputTrack;
     await this.callObject.setInputDevicesAsync({ audioSource: newInputTrack });
+    this._log("info", "Input audio track updated", {
+      trackId: newInputTrack.id,
+    });
   }
 
   public getParticipantId(): string {
@@ -601,10 +721,15 @@ export class Translator {
       this.callObject.leave();
       this.callObject.destroy();
       this.callObject = null;
+      this._log("info", "Call object destroyed and left the session");
     }
     if (this.onDestroy) {
       this.onDestroy();
+      this._log("debug", "onDestroy callback invoked");
     }
+    this._log("info", "Translator instance destroyed", {
+      participantId: this.participantId,
+    });
   }
 }
 
