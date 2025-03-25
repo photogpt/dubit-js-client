@@ -57,12 +57,37 @@ async function startCall() {
   document.getElementById("startCall").disabled = true;
   const logDiv = document.getElementById("log");
   logDiv.innerHTML = "<p>Starting call...</p>";
+  const loggerCallback = (log) => {
+    if (!["error", "warn", "info"].includes(log.level)) return;
+    logDiv.innerHTML += `
+      <div class="mb-2 pb-2 border-b border-gray-200">
+        <div class="flex gap-2 items-center">
+          <span class="font-medium text-gray-800">${log.className}</span>
+          <span class="text-sm text-gray-500">${log.timestamp}</span>:
+          <span class="text-gray-700 flex-grow">${log.message}</span>
+          ${
+            log.data
+              ? `
+            <div class="ml-auto">
+              <details>
+                <summary class="text-sm text-blue-500 cursor-pointer inline-block">Data</summary>
+                <div class="p-2 bg-gray-100 border border-gray-300 rounded-md text-xs whitespace-pre-wrap mt-1">
+                  <pre>${JSON.stringify(log.data, null, 2)}</pre>
+                </div>
+              </details>
+            </div>
+          `
+              : ""
+          }
+        </div>
+      </div>
+    `;
+  };
 
   try {
-    dubitInstance = await Dubit.createNewInstance({ token });
+    dubitInstance = await Dubit.createNewInstance({ token: token, loggerCallback: loggerCallback });
 
     window._dubit = dubitInstance;
-    logDiv.innerHTML += "<p>Call started!</p>";
     document.getElementById("controls-1").style.display = "flex";
     document.getElementById("controls-2").style.display = "flex";
 
@@ -70,7 +95,6 @@ async function startCall() {
     populateLanguages();
   } catch (err) {
     console.error("Error starting call:", err);
-    logDiv.innerHTML += `<p style="color:red;">Error: ${err.message}</p>`;
   }
 }
 
@@ -86,7 +110,6 @@ async function addTranslator(translatorId) {
   const audioOutputSelect = document.getElementById(`audioOutput-${translatorId}`);
   const sourceLangSelect = document.getElementById(`sourceLang-${translatorId}`);
   const targetLangSelect = document.getElementById(`targetLang-${translatorId}`);
-  const logDiv = document.getElementById("log");
   const interimCaptionsDiv = document.getElementById(`interimCaptions-${translatorId}`);
 
   // Get selected values
@@ -94,8 +117,6 @@ async function addTranslator(translatorId) {
   const outputDeviceId = audioOutputSelect.value;
   const fromLang = sourceLangSelect.value;
   const toLang = targetLangSelect.value;
-
-  logDiv.innerHTML += `<p>Adding translator ${translatorId}: ${fromLang} → ${toLang}</p>`;
 
   try {
     // exact avoids browser's fallback logic, we explicitly need certain device
@@ -116,9 +137,8 @@ async function addTranslator(translatorId) {
       translationBeep: true,
     });
 
+    const logDiv = document.getElementById("log");
     translator.onTranslatedTrackReady((track) => {
-      logDiv.innerHTML += `<p>Translated track ready for - ${translatorId}! Routing to: ${outputDeviceId}</p>`;
-
       track.enabled = true;
       const elementId = `audio-${translatorId}-${translator.getInstanceId()}`;
 
@@ -139,7 +159,6 @@ async function addTranslator(translatorId) {
     });
   } catch (err) {
     console.error(`Error adding translator ${translatorId}:`, err);
-    logDiv.innerHTML += `<p style="color:red;">Error (Translator ${translatorId}): ${err.message}</p>`;
 
     document.getElementById(`addTranslator-${translatorId}`).disabled = false;
     document
