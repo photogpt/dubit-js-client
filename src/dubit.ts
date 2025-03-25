@@ -450,6 +450,33 @@ export function getSupportedLanguages(): LanguageType[] {
   return SUPPORTED_LANGUAGES;
 }
 
+export async function validateApiKey(apiKey: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_URL}/user/validate/${apiKey}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    return result.data?.is_exists || false;
+  } catch (error: any) {
+    const completeError = enhanceError(
+      "Unable to validate API key. Please check your network connection and API key",
+      error,
+    );
+    console.error("dubit.validateApiKey error:", completeError);
+    throw completeError;
+  }
+}
+
+
 export async function getCompleteTranscript({
   instanceId,
   token,

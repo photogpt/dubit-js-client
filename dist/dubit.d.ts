@@ -38,6 +38,7 @@ export type DubitLog = {
 };
 export declare function createNewInstance({ token, apiUrl, loggerCallback, }: DubitCreateParams): Promise<DubitInstance>;
 export declare function getSupportedLanguages(): LanguageType[];
+export declare function validateApiKey(apiKey: string): Promise<boolean>;
 export declare function getCompleteTranscript({ instanceId, token, apiUrl, }: {
     instanceId: string;
     token: string;
