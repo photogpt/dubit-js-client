@@ -14,9 +14,14 @@ export type CaptionEvent = {
   type: string;
 };
 
+/**
+ * For now, only API_KEY is supported as a token.
+ * To generate, go to https://www.dubit.live/dashboard/account?selectedTab=apikey
+ */
 export type DubitCreateParams = {
-  token: string; // for now only API_KEY is supported
+  token: string;
   apiUrl?: string;
+  loggerCallback?: ((log: DubitLog) => void) | null;
 };
 
 export type TranslatorParams = {
@@ -37,11 +42,29 @@ export type LanguageType = {
   label: string;
 };
 
+export type DubitLog = {
+  level: "error" | "warn" | "info" | "debug";
+  className: string;
+  message: string;
+  data?: any;
+  timestamp: string;
+};
+
 const API_URL = "https://test-api.dubit.live";
+
+function enhanceError(baseMessage: string, originalError: any): Error {
+  const enhancedError = new Error(
+    `${baseMessage}. Original error: ${originalError?.message || "No original error message"}`,
+  );
+  enhancedError.stack = originalError?.stack;
+  enhancedError.cause = originalError;
+  return enhancedError;
+}
 
 export async function createNewInstance({
   token,
   apiUrl = API_URL,
+  loggerCallback = null,
 }: DubitCreateParams): Promise<DubitInstance> {
   try {
     const response = await fetch(`${apiUrl}/meeting/new-meeting`, {
@@ -52,7 +75,11 @@ export async function createNewInstance({
       },
     });
     if (!response.ok) {
-      throw new Error("Failed to create meeting room");
+      const errorData = await response.json();
+      const errorMessage =
+        errorData?.message ||
+        `Failed to create connection with Dubit servers (HTTP ${response.status})`;
+      throw new Error(errorMessage);
     }
     type NewMeetingResponseData = {
       status: string;
@@ -64,10 +91,19 @@ export async function createNewInstance({
     const data: NewMeetingResponseData = await response.json();
     const instanceId = data.meeting_id;
     const roomUrl = data.roomUrl;
-    return new DubitInstance(instanceId, roomUrl, token, apiUrl);
-  } catch (error) {
-    console.error("dubit.createNewInstance error:", error);
-    throw error;
+    const instance = new DubitInstance(instanceId, roomUrl, token, apiUrl);
+    instance.setLoggerCallback(loggerCallback);
+    instance._log("info", "DubitInstance", "Instance created successfully", {
+      instanceId,
+    });
+    return instance;
+  } catch (error: any) {
+    const completeError = enhanceError(
+      "Unable to create Dubit instance. Please check your network connection and API token",
+      error,
+    );
+    console.error("dubit.createNewInstance error:", completeError);
+    throw completeError;
   }
 }
 
@@ -84,17 +120,60 @@ export async function getCompleteTranscript({
   token: string;
   apiUrl?: string;
 }): Promise<any> {
-  const response = await fetch(`${apiUrl}/meeting/${instanceId}/transcripts`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  if (!response.ok) {
-    throw new Error("Failed to fetch complete transcript");
+  try {
+    const response = await fetch(
+      `${apiUrl}/meeting/${instanceId}/transcripts`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+    if (!response.ok) {
+      const errorData = await response.json();
+      const errorMessage =
+        errorData?.message || "Failed to fetch complete transcript";
+      throw new Error(errorMessage);
+    }
+    return response.json();
+  } catch (error: any) {
+    console.error("dubit.getCompleteTranscript error:", error);
+    throw error;
   }
-  return response.json();
+}
+
+function validateTranslatorParams(params: TranslatorParams): Error | null {
+  if (!SUPPORTED_LANGUAGES.map((x) => x.langCode).includes(params.fromLang)) {
+    return new Error(
+      `Unsupported fromLang: ${params.fromLang}. Supported from languages: ${SUPPORTED_LANGUAGES.map((x) => x.langCode)}`,
+    );
+  }
+  if (!SUPPORTED_LANGUAGES.map((x) => x.langCode).includes(params.toLang)) {
+    return new Error(
+      `Unsupported toLang: ${params.toLang}. Supported to languages: ${SUPPORTED_LANGUAGES.map((x) => x.langCode)}`,
+    );
+  }
+  if (params.voiceType !== "male" && params.voiceType !== "female") {
+    return new Error(
+      `Unsupported voiceType: ${params.voiceType}. Supported voice types: male, female`,
+    );
+  }
+  if (params.inputAudioTrack === null) {
+    return new Error("inputAudioTrack is required");
+  }
+  if (
+    params.version &&
+    !SUPPORTED_TRANSLATOR_VERSIONS.map((x) => x.version).includes(
+      params.version,
+    )
+  ) {
+    return new Error(
+      `Unsupported version: ${params.version}. Supported versions: ${SUPPORTED_TRANSLATOR_VERSIONS}`,
+    );
+  }
+  return null;
 }
 
 export class DubitInstance {
@@ -103,6 +182,7 @@ export class DubitInstance {
   public ownerToken: string;
   private apiUrl: string;
   private activeTranslators: Map<string, Translator> = new Map();
+  private loggerCallback: ((log: DubitLog) => void) | null = null;
 
   constructor(
     instanceId: string,
@@ -116,40 +196,67 @@ export class DubitInstance {
     this.apiUrl = apiUrl;
   }
 
-  private validateTranslatorParams(params: TranslatorParams): Error | null {
-    if (!SUPPORTED_LANGUAGES.map((x) => x.langCode).includes(params.fromLang)) {
-      return new Error(
-        `Unsupported fromLang: ${params.fromLang}. Supported from languages: ${SUPPORTED_LANGUAGES.map((x) => x.langCode)}`,
+  public setLoggerCallback(callback: ((log: DubitLog) => void) | null) {
+    if (typeof callback === "function" || callback === null) {
+      this.loggerCallback = callback;
+      this._log("debug", "DubitInstance", "Logger callback updated", {
+        callback: !!callback,
+      });
+    } else {
+      console.warn(
+        "Invalid loggerCallback provided. It should be a function or null.",
       );
+      this.loggerCallback = null;
     }
-    if (!SUPPORTED_LANGUAGES.map((x) => x.langCode).includes(params.toLang)) {
-      return new Error(
-        `Unsupported toLang: ${params.toLang}. Supported to languages: ${SUPPORTED_LANGUAGES.map((x) => x.langCode)}`,
-      );
+  }
+
+  /**
+   * Internal logging method for DubitInstance and its children.
+   */
+  _log(
+    level: "error" | "warn" | "info" | "debug",
+    className: string,
+    message: string,
+    data?: any,
+  ) {
+    const logEntry: DubitLog = {
+      level,
+      className,
+      message,
+      data,
+      timestamp: new Date().toISOString(),
+    };
+
+    if (this.loggerCallback) {
+      try {
+        this.loggerCallback(logEntry);
+      } catch (error: any) {
+        console.error("Error in loggerCallback:", error);
+        console.error("Original log message:", logEntry);
+      }
+    } else {
+      const logMessage = `[${logEntry.timestamp}] [${logEntry.className}] ${logEntry.level.toUpperCase()}: ${logEntry.message}`;
+      switch (level) {
+        case "error":
+          console.error(logMessage, logEntry.data || "");
+          break;
+        case "warn":
+          console.warn(logMessage, logEntry.data || "");
+          break;
+        case "info":
+          console.info(logMessage, logEntry.data || "");
+          break;
+        case "debug":
+          console.debug(logMessage, logEntry.data || "");
+          break;
+        default:
+          console.log(logMessage, logEntry.data || ""); // Default level or 'log'
+      }
     }
-    if (params.voiceType !== "male" && params.voiceType !== "female") {
-      return new Error(
-        `Unsupported voiceType: ${params.voiceType}. Supported voice types: male, female`,
-      );
-    }
-    if (params.inputAudioTrack === null) {
-      return new Error("inputAudioTrack is required");
-    }
-    if (
-      params.version &&
-      !SUPPORTED_TRANSLATOR_VERSIONS.map((x) => x.version).includes(
-        params.version,
-      )
-    ) {
-      return new Error(
-        `Unsupported version: ${params.version}. Supported versions: ${SUPPORTED_TRANSLATOR_VERSIONS}`,
-      );
-    }
-    return null;
   }
 
   public async addTranslator(params: TranslatorParams): Promise<Translator> {
-    const validationError = this.validateTranslatorParams(params);
+    const validationError = validateTranslatorParams(params);
     if (validationError) {
       return Promise.reject(validationError);
     }
