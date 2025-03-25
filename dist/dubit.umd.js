@@ -82,6 +82,34 @@
       enhancedError.cause = originalError;
       return enhancedError;
     }
+    function executeLog(loggerCallback, logEntry) {
+      if (loggerCallback) {
+        try {
+          loggerCallback(logEntry);
+        } catch (error) {
+          console.error("Error in loggerCallback:", error);
+          console.error("Original log message:", logEntry);
+        }
+      } else {
+        var logMessage = "[".concat(logEntry.timestamp, "] [").concat(logEntry.className, "] ").concat(logEntry.level.toUpperCase(), ": ").concat(logEntry.message);
+        switch (logEntry.level) {
+          case "error":
+            console.error(logMessage, logEntry.data || "");
+            break;
+          case "warn":
+            console.warn(logMessage, logEntry.data || "");
+            break;
+          case "info":
+            console.info(logMessage, logEntry.data || "");
+            break;
+          case "debug":
+            console.debug(logMessage, logEntry.data || "");
+            break;
+          default:
+            console.log(logMessage, logEntry.data || "");
+        }
+      }
+    }
     function createNewInstance(_a) {
       var token = _a.token,
         _b = _a.apiUrl,
@@ -232,33 +260,7 @@
           data: data,
           timestamp: new Date().toISOString()
         };
-        if (this.loggerCallback) {
-          try {
-            this.loggerCallback(logEntry);
-          } catch (error) {
-            console.error("Error in loggerCallback:", error);
-            console.error("Original log message:", logEntry);
-          }
-        } else {
-          var logMessage = "[".concat(logEntry.timestamp, "] [").concat(logEntry.className, "] ").concat(logEntry.level.toUpperCase(), ": ").concat(logEntry.message);
-          switch (level) {
-            case "error":
-              console.error(logMessage, logEntry.data || "");
-              break;
-            case "warn":
-              console.warn(logMessage, logEntry.data || "");
-              break;
-            case "info":
-              console.info(logMessage, logEntry.data || "");
-              break;
-            case "debug":
-              console.debug(logMessage, logEntry.data || "");
-              break;
-            default:
-              console.log(logMessage, logEntry.data || "");
-            // Default level or 'log'
-          }
-        }
+        executeLog(this.loggerCallback, logEntry);
       };
       DubitInstance.prototype.addTranslator = function (params) {
         return __awaiter(this, void 0, void 0, function () {
@@ -357,34 +359,7 @@
           data: data,
           timestamp: new Date().toISOString()
         };
-        if (this.loggerCallback) {
-          try {
-            this.loggerCallback(logEntry);
-          } catch (error) {
-            // Explicitly type error as any for catch block
-            console.error("Error in Translator loggerCallback:", error);
-            console.error("Original Translator log message:", logEntry);
-          }
-        } else {
-          // Default console logging for Translator
-          var logMessage = "[".concat(logEntry.timestamp, "] [").concat(logEntry.className, "] ").concat(logEntry.level.toUpperCase(), ": ").concat(logEntry.message);
-          switch (level) {
-            case "error":
-              console.error(logMessage, logEntry.data || "");
-              break;
-            case "warn":
-              console.warn(logMessage, logEntry.data || "");
-              break;
-            case "info":
-              console.info(logMessage, logEntry.data || "");
-              break;
-            case "debug":
-              console.debug(logMessage, logEntry.data || "");
-              break;
-            default:
-              console.log(logMessage, logEntry.data || "");
-          }
-        }
+        executeLog(this.loggerCallback, logEntry);
       };
       Translator.prototype._getTranslatorLabel = function () {
         var _this = this;
