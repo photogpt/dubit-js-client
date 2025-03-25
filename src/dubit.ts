@@ -21,7 +21,7 @@ export type CaptionEvent = {
 export type DubitCreateParams = {
   token: string;
   apiUrl?: string;
-  loggerCallback?: ((log: DubitLog) => void) | null;
+  loggerCallback?: ((log: DubitUserLog) => void) | null;
 };
 
 export type TranslatorParams = {
@@ -443,7 +443,7 @@ export async function validateApiKey(apiKey: string): Promise<boolean> {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-      }
+      },
     });
 
     if (!response.ok) {
@@ -462,7 +462,6 @@ export async function validateApiKey(apiKey: string): Promise<boolean> {
     throw completeError;
   }
 }
-
 
 export async function getCompleteTranscript({
   instanceId,
