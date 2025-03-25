@@ -112,19 +112,6 @@ export const DubitLogEvents = {
     userMessage: "Adding translator...",
     description: "Starting the process to add a new Translator instance.",
   },
-  TRANSLATOR_VALIDATING_PARAMS: {
-    code: "TRANSLATOR_VALIDATING_PARAMS",
-    level: "debug",
-    userMessage: "Validating translator settings...",
-    description:
-      "Checking if the provided translator parameters (languages, voice, etc.) are valid.",
-  },
-  TRANSLATOR_VALIDATION_FAILED: {
-    code: "TRANSLATOR_VALIDATION_FAILED",
-    level: "error",
-    userMessage: "Invalid translator settings: {reason}",
-    description: "Translator parameters validation failed.",
-  },
   TRANSLATOR_INITIALIZING: {
     code: "TRANSLATOR_INITIALIZING",
     level: "info",
@@ -775,11 +762,6 @@ export class Translator {
           },
         },
       });
-      this._log(DubitLogEvents.TRANSLATOR_JOINING_ROOM, {
-        stage: "joinCallComplete",
-        roomUrl: this.roomUrl,
-        audioSource: !!audioSource,
-      });
     } catch (error) {
       const enhancedError = enhanceError("Failed to join Daily call", error);
       this._log(
@@ -795,11 +777,6 @@ export class Translator {
     const participants: DailyParticipantsObject =
       this.callObject.participants();
     this.participantId = participants.local.session_id;
-    this._log(DubitLogEvents.TRANSLATOR_INITIALIZING, {
-      stage: "participantIdRetrieved",
-      participantId: this.participantId,
-    });
-
     try {
       this._log(DubitLogEvents.TRANSLATOR_REGISTERING, {
         participantId: this.participantId,
@@ -979,10 +956,6 @@ export class Translator {
         );
         throw enhancedError;
       }
-      this._log(DubitLogEvents.TRANSLATOR_REGISTERING, {
-        stage: "registerComplete",
-        participantId,
-      });
     } catch (error: any) {
       const enhancedError = enhanceError(
         "Error during participant registration",
@@ -1058,12 +1031,6 @@ export class Translator {
         );
         throw enhancedError;
       }
-      this._log(
-        DubitLogEvents.TRANSLATOR_REQUESTING,
-        { stage: "requestComplete", payload: apiPayload },
-        undefined,
-        messageParams,
-      );
     } catch (error: any) {
       const enhancedError = enhanceError(
         "Error requesting translation service",
@@ -1091,22 +1058,7 @@ export class Translator {
       return;
     }
     this.onTranslatedTrackCallback = callback;
-    this._log(
-      DubitLogEvents.TRANSLATOR_TRACK_READY,
-      { stage: "callbackSet" },
-      undefined,
-      { fromLang: this.fromLang, toLang: this.toLang },
-    );
     if (this.translatedTrack) {
-      this._log(
-        DubitLogEvents.TRANSLATOR_TRACK_READY,
-        {
-          reason: "Callback invoked immediately",
-          trackId: this.translatedTrack.id,
-        },
-        undefined,
-        { fromLang: this.fromLang, toLang: this.toLang },
-      );
       try {
         callback(this.translatedTrack);
       } catch (callbackError: any) {
@@ -1239,10 +1191,6 @@ export class Translator {
       this.callObject.off("participant-left", this.handleParticipantLeft);
 
       try {
-        this._log(DubitLogEvents.TRANSLATOR_DESTROYED, {
-          stage: "leavingCall",
-          participantId,
-        });
         await this.callObject.leave();
       } catch (leaveError: any) {
         this._log(
@@ -1253,10 +1201,6 @@ export class Translator {
       }
 
       try {
-        this._log(DubitLogEvents.TRANSLATOR_DESTROYED, {
-          stage: "destroyingCallObject",
-          participantId,
-        });
         await this.callObject.destroy();
       } catch (destroyError: any) {
         this._log(
