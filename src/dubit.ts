@@ -61,6 +61,38 @@ function enhanceError(baseMessage: string, originalError: any): Error {
   return enhancedError;
 }
 
+function executeLog(
+  loggerCallback: ((log: DubitLog) => void) | null,
+  logEntry: DubitLog,
+) {
+  if (loggerCallback) {
+    try {
+      loggerCallback(logEntry);
+    } catch (error: any) {
+      console.error("Error in loggerCallback:", error);
+      console.error("Original log message:", logEntry);
+    }
+  } else {
+    const logMessage = `[${logEntry.timestamp}] [${logEntry.className}] ${logEntry.level.toUpperCase()}: ${logEntry.message}`;
+    switch (logEntry.level) {
+      case "error":
+        console.error(logMessage, logEntry.data || "");
+        break;
+      case "warn":
+        console.warn(logMessage, logEntry.data || "");
+        break;
+      case "info":
+        console.info(logMessage, logEntry.data || "");
+        break;
+      case "debug":
+        console.debug(logMessage, logEntry.data || "");
+        break;
+      default:
+        console.log(logMessage, logEntry.data || "");
+    }
+  }
+}
+
 export async function createNewInstance({
   token,
   apiUrl = API_URL,
@@ -226,33 +258,7 @@ export class DubitInstance {
       data,
       timestamp: new Date().toISOString(),
     };
-
-    if (this.loggerCallback) {
-      try {
-        this.loggerCallback(logEntry);
-      } catch (error: any) {
-        console.error("Error in loggerCallback:", error);
-        console.error("Original log message:", logEntry);
-      }
-    } else {
-      const logMessage = `[${logEntry.timestamp}] [${logEntry.className}] ${logEntry.level.toUpperCase()}: ${logEntry.message}`;
-      switch (level) {
-        case "error":
-          console.error(logMessage, logEntry.data || "");
-          break;
-        case "warn":
-          console.warn(logMessage, logEntry.data || "");
-          break;
-        case "info":
-          console.info(logMessage, logEntry.data || "");
-          break;
-        case "debug":
-          console.debug(logMessage, logEntry.data || "");
-          break;
-        default:
-          console.log(logMessage, logEntry.data || ""); // Default level or 'log'
-      }
-    }
+    executeLog(this.loggerCallback, logEntry);
   }
 
   public async addTranslator(params: TranslatorParams): Promise<Translator> {
@@ -371,34 +377,7 @@ export class Translator {
       timestamp: new Date().toISOString(),
     };
 
-    if (this.loggerCallback) {
-      try {
-        this.loggerCallback(logEntry);
-      } catch (error: any) {
-        // Explicitly type error as any for catch block
-        console.error("Error in Translator loggerCallback:", error);
-        console.error("Original Translator log message:", logEntry);
-      }
-    } else {
-      // Default console logging for Translator
-      const logMessage = `[${logEntry.timestamp}] [${logEntry.className}] ${logEntry.level.toUpperCase()}: ${logEntry.message}`;
-      switch (level) {
-        case "error":
-          console.error(logMessage, logEntry.data || "");
-          break;
-        case "warn":
-          console.warn(logMessage, logEntry.data || "");
-          break;
-        case "info":
-          console.info(logMessage, logEntry.data || "");
-          break;
-        case "debug":
-          console.debug(logMessage, logEntry.data || "");
-          break;
-        default:
-          console.log(logMessage, logEntry.data || "");
-      }
-    }
+    executeLog(this.loggerCallback, logEntry);
   }
 
   private _getTranslatorLabel(): string {
