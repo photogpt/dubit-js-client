@@ -62,17 +62,31 @@ async function startCall() {
     logDiv.innerHTML += `
       <div class="mb-2 pb-2 border-b border-gray-200">
         <div class="flex gap-2 items-center">
-          <span class="font-medium text-gray-800">${log.className}</span>
+          <span class="font-medium text-gray-800">${log.eventCode}</span>
           <span class="text-sm text-gray-500">${log.timestamp}</span>:
-          <span class="text-gray-700 flex-grow">${log.message}</span>
+          <span class="text-gray-700 flex-grow">${log.userMessage}</span>
           ${
-            log.data
+            log.internalData
               ? `
             <div class="ml-auto">
               <details>
                 <summary class="text-sm text-blue-500 cursor-pointer inline-block">Data</summary>
                 <div class="p-2 bg-gray-100 border border-gray-300 rounded-md text-xs whitespace-pre-wrap mt-1">
-                  <pre>${JSON.stringify(log.data, null, 2)}</pre>
+                  <pre>${JSON.stringify(log.internalData, null, 2)}</pre>
+                </div>
+              </details>
+            </div>
+          `
+              : ""
+          }
+          ${
+            log.error
+              ? `
+            <div class="ml-auto">
+              <details>
+                <summary class="text-sm text-red-500 cursor-pointer inline-block">Error</summary>
+                <div class="p-2 bg-red-100 border border-gray-300 rounded-md text-xs whitespace-pre-wrap mt-1">
+                  <pre>${log.error}</pre>
                 </div>
               </details>
             </div>

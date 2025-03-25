@@ -848,7 +848,8 @@ export class Translator {
 
       if (this.onTranslatedTrackCallback) {
         try {
-          this.onTranslatedTrackCallback(this.translatedTrack);
+          this.onTranslatedTrackCallback(event.track);
+          this.translatedTrack = event.track;
         } catch (callbackError: any) {
           this._log(
             DubitLogEvents.INTERNAL_ERROR,

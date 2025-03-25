@@ -616,7 +616,8 @@ var Translator = /** @class */function () {
         });
         if (_this.onTranslatedTrackCallback) {
           try {
-            _this.onTranslatedTrackCallback(_this.translatedTrack);
+            _this.onTranslatedTrackCallback(event.track);
+            _this.translatedTrack = event.track;
           } catch (callbackError) {
             _this._log(DubitLogEvents.INTERNAL_ERROR, {
               handler: "onTranslatedTrackCallback"
