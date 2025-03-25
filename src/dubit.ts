@@ -266,16 +266,33 @@ export class DubitInstance {
       roomUrl: this.roomUrl,
       token: this.ownerToken,
       apiUrl: this.apiUrl,
+      loggerCallback: this.loggerCallback,
       ...params,
     });
 
     translator.onDestroy = () => {
       this.activeTranslators.delete(translator.getParticipantId());
+      this._log("info", "DubitInstance", "Translator removed", {
+        participantId: translator.getParticipantId(),
+      });
     };
 
-    await translator.init();
-    this.activeTranslators.set(translator.getParticipantId(), translator);
-    return translator;
+    try {
+      await translator.init();
+      this.activeTranslators.set(translator.getParticipantId(), translator);
+      this._log("info", "DubitInstance", "Translator added and initialized", {
+        participantId: translator.getParticipantId(),
+        toLang: params.toLang,
+        fromLang: params.fromLang,
+      });
+      return translator;
+    } catch (error: any) {
+      this._log("error", "DubitInstance", "Failed to initialize translator", {
+        error: error.message,
+        params,
+      });
+      return Promise.reject(error);
+    }
   }
 }
 
