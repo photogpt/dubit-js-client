@@ -172,7 +172,7 @@ async function addTranslator(translatorId) {
       metadata: { demo: true },
       version: '2',
       keywords: false,
-      translationBeep: true,
+      translationBeep: false,
     })
 
     const logDiv = document.getElementById('log')
