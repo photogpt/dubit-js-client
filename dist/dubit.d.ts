@@ -1,3 +1,4 @@
+import { DailyEventObjectNetworkConnectionEvent, DailyNetworkStats } from '@daily-co/daily-js';
 export type CaptionEvent = {
     participant_id: string;
     timestamp: string;
@@ -24,6 +25,9 @@ export type TranslatorParams = {
     inputAudioTrack: MediaStreamTrack | null;
     metadata?: Record<string, any>;
     outputDeviceId?: string;
+    onTranslatedTrackReady?: (track: MediaStreamTrack) => void;
+    onCaptions?: (caption: CaptionEvent) => void;
+    onNetworkConnection?: (networkConnectionEvent: DailyEventObjectNetworkConnectionEvent) => void;
 };
 export type LanguageType = {
     langCode: string;
@@ -86,6 +90,7 @@ export declare class Translator {
     private loggerCallback;
     private onTranslatedTrackCallback;
     private onCaptionsCallback;
+    private onNetworkConnectionCallback;
     onDestroy?: () => void;
     getInstanceId: () => string;
     constructor(params: {
@@ -102,6 +107,7 @@ export declare class Translator {
     private handleParticipantJoined;
     private handleAppMessage;
     private handleParticipantLeft;
+    private handleNetworkConnection;
     private registerParticipant;
     private addTranslationBot;
     onTranslatedTrackReady(callback: (translatedTrack: MediaStreamTrack) => void): void;
@@ -109,6 +115,7 @@ export declare class Translator {
     updateInputTrack(newInputTrack: MediaStreamTrack | null): Promise<void>;
     getParticipantId(): string;
     getTranslatedTrack(): MediaStreamTrack | null;
+    getNetworkStats(): Promise<DailyNetworkStats>;
     destroy(): Promise<void>;
 }
 /**

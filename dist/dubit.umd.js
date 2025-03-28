@@ -77,7 +77,11 @@
 
     var API_URL = 'https://test-api.dubit.live';
     function enhanceError(baseMessage, originalError) {
-      var enhancedError = new Error("".concat(baseMessage, ". Original error: ").concat((originalError === null || originalError === void 0 ? void 0 : originalError.message) || 'No original error message'));
+      var errorMessage = baseMessage;
+      if (originalError === null || originalError === void 0 ? void 0 : originalError.message) {
+        errorMessage += " Original error: ".concat(originalError === null || originalError === void 0 ? void 0 : originalError.message);
+      }
+      var enhancedError = new Error(errorMessage);
       enhancedError.stack = originalError === null || originalError === void 0 ? void 0 : originalError.stack;
       try {
         if (typeof structuredClone === 'function') {
@@ -143,20 +147,20 @@
       }
     }
     function createNewInstance(_a) {
-      var token = _a.token,
-        _b = _a.apiUrl,
-        apiUrl = _b === void 0 ? API_URL : _b,
-        _c = _a.loggerCallback,
-        loggerCallback = _c === void 0 ? null : _c;
-      return __awaiter(this, void 0, void 0, function () {
+      return __awaiter(this, arguments, void 0, function (_b) {
         var response, errorData, errorMessage, error, data, instanceId, roomUrl, instance, error_1, completeError, baseMessageFromError;
-        return __generator(this, function (_d) {
-          switch (_d.label) {
+        var token = _b.token,
+          _c = _b.apiUrl,
+          apiUrl = _c === void 0 ? API_URL : _c,
+          _d = _b.loggerCallback,
+          loggerCallback = _d === void 0 ? null : _d;
+        return __generator(this, function (_e) {
+          switch (_e.label) {
             case 0:
               logUserEvent(loggerCallback, DubitLogEvents.INSTANCE_CREATING, 'DubitSDK');
-              _d.label = 1;
+              _e.label = 1;
             case 1:
-              _d.trys.push([1, 9,, 10]);
+              _e.trys.push([1, 9,, 10]);
               return [4 /*yield*/, fetch("".concat(apiUrl, "/meeting/new-meeting"), {
                 method: 'GET',
                 headers: {
@@ -165,18 +169,18 @@
                 }
               })];
             case 2:
-              response = _d.sent();
+              response = _e.sent();
               errorData = null;
               if (!!response.ok) return [3 /*break*/, 7];
-              _d.label = 3;
+              _e.label = 3;
             case 3:
-              _d.trys.push([3, 5,, 6]);
+              _e.trys.push([3, 5,, 6]);
               return [4 /*yield*/, response.json()];
             case 4:
-              errorData = _d.sent();
+              errorData = _e.sent();
               return [3 /*break*/, 6];
             case 5:
-              _d.sent();
+              _e.sent();
               errorData = {
                 message: "Received non-JSON error response (HTTP ".concat(response.status, ")")
               };
@@ -192,7 +196,7 @@
             case 7:
               return [4 /*yield*/, response.json()];
             case 8:
-              data = _d.sent();
+              data = _e.sent();
               instanceId = data.meeting_id;
               roomUrl = data.roomUrl;
               instance = new DubitInstance(instanceId, roomUrl, token, apiUrl);
@@ -202,7 +206,7 @@
               });
               return [2 /*return*/, instance];
             case 9:
-              error_1 = _d.sent();
+              error_1 = _e.sent();
               completeError = enhanceError('Unable to create Dubit instance', error_1);
               baseMessageFromError = completeError.message.split('. Original error:')[0];
               if (error_1.message !== baseMessageFromError) {
@@ -219,9 +223,9 @@
       return SUPPORTED_LANGUAGES;
     }
     function validateApiKey(apiKey) {
-      var _a;
       return __awaiter(this, void 0, void 0, function () {
         var response, result, error_2, completeError;
+        var _a;
         return __generator(this, function (_b) {
           switch (_b.label) {
             case 0:
@@ -253,16 +257,16 @@
       });
     }
     function getCompleteTranscript(_a) {
-      var instanceId = _a.instanceId,
-        token = _a.token,
-        _b = _a.apiUrl,
-        apiUrl = _b === void 0 ? API_URL : _b;
-      return __awaiter(this, void 0, void 0, function () {
+      return __awaiter(this, arguments, void 0, function (_b) {
         var response, errorData, errorMessage, error_3;
-        return __generator(this, function (_c) {
-          switch (_c.label) {
+        var instanceId = _b.instanceId,
+          token = _b.token,
+          _c = _b.apiUrl,
+          apiUrl = _c === void 0 ? API_URL : _c;
+        return __generator(this, function (_d) {
+          switch (_d.label) {
             case 0:
-              _c.trys.push([0, 4,, 5]);
+              _d.trys.push([0, 4,, 5]);
               return [4 /*yield*/, fetch("".concat(apiUrl, "/meeting/").concat(instanceId, "/transcripts"), {
                 method: 'GET',
                 headers: {
@@ -271,17 +275,17 @@
                 }
               })];
             case 1:
-              response = _c.sent();
+              response = _d.sent();
               if (!!response.ok) return [3 /*break*/, 3];
               return [4 /*yield*/, response.json()];
             case 2:
-              errorData = _c.sent();
+              errorData = _d.sent();
               errorMessage = (errorData === null || errorData === void 0 ? void 0 : errorData.message) || 'Failed to fetch complete transcript';
               throw new Error(errorMessage);
             case 3:
               return [2 /*return*/, response.json()];
             case 4:
-              error_3 = _c.sent();
+              error_3 = _d.sent();
               console.error('dubit.getCompleteTranscript error:', error_3);
               throw error_3;
             case 5:
@@ -416,6 +420,7 @@
         this.loggerCallback = null;
         this.onTranslatedTrackCallback = null;
         this.onCaptionsCallback = null;
+        this.onNetworkConnectionCallback = null;
         this.getInstanceId = function () {
           return _this.instanceId;
         };
@@ -487,6 +492,10 @@
             }
           }
         };
+        this.handleNetworkConnection = function (event) {
+          var _a;
+          (_a = _this.onNetworkConnectionCallback) === null || _a === void 0 ? void 0 : _a.call(_this, event);
+        };
         this.instanceId = params.instanceId;
         this.roomUrl = params.roomUrl;
         this.token = params.token;
@@ -502,6 +511,9 @@
         this.metadata = params.metadata ? safeSerializeMetadata(params.metadata) : {};
         this.outputDeviceId = params.outputDeviceId;
         this.loggerCallback = params.loggerCallback || null;
+        if (params.onTranslatedTrackReady) this.onTranslatedTrackCallback = params.onTranslatedTrackReady;
+        if (params.onCaptions) this.onCaptionsCallback = params.onCaptions;
+        if (params.onNetworkConnection) this.onNetworkConnectionCallback = params.onNetworkConnection;
       }
       Translator.prototype._log = function (eventDef, internalData, originalError, messageParams) {
         logUserEvent(this.loggerCallback, eventDef, this.constructor.name, internalData, originalError, messageParams);
@@ -519,9 +531,9 @@
         return "Translator ".concat(fromLangLabel, " -> ").concat(toLangLabel);
       };
       Translator.prototype.init = function () {
-        var _a, _b, _c, _d, _e;
         return __awaiter(this, void 0, void 0, function () {
           var enhancedError, audioSource, error_5, enhancedError, participants, error_6, messageParams, error_7;
+          var _a, _b, _c, _d, _e;
           return __generator(this, function (_f) {
             switch (_f.label) {
               case 0:
@@ -535,7 +547,7 @@
                     stage: 'callObjectCreated'
                   });
                 } catch (error) {
-                  enhancedError = enhanceError('Failed to create Daily call object', error);
+                  enhancedError = enhanceError('Failed to create call object', error);
                   this._log(DubitLogEvents.TRANSLATOR_INIT_FAILED_CALL_OBJECT, undefined, enhancedError);
                   throw enhancedError;
                 }
@@ -569,7 +581,7 @@
                 return [3 /*break*/, 5];
               case 3:
                 error_5 = _f.sent();
-                enhancedError = enhanceError('Failed to join Daily call', error_5);
+                enhancedError = enhanceError('Failed to establish connection', error_5);
                 this._log(DubitLogEvents.TRANSLATOR_JOIN_FAILED, {
                   roomUrl: this.roomUrl
                 }, enhancedError);
@@ -630,6 +642,7 @@
                 this.callObject.on('participant-joined', this.handleParticipantJoined);
                 this.callObject.on('app-message', this.handleAppMessage);
                 this.callObject.on('participant-left', this.handleParticipantLeft);
+                this.callObject.on('network-connection', this.handleNetworkConnection);
                 this._log(DubitLogEvents.TRANSLATOR_INIT_COMPLETE, {
                   fromLang: this.fromLang,
                   toLang: this.toLang,
@@ -894,6 +907,13 @@
       Translator.prototype.getTranslatedTrack = function () {
         return this.translatedTrack;
       };
+      Translator.prototype.getNetworkStats = function () {
+        return __awaiter(this, void 0, void 0, function () {
+          return __generator(this, function (_a) {
+            return [2 /*return*/, this.callObject.getNetworkStats()];
+          });
+        });
+      };
       Translator.prototype.destroy = function () {
         return __awaiter(this, void 0, void 0, function () {
           var participantId, leaveError_1, destroyError_1;
@@ -911,6 +931,7 @@
                 this.callObject.off('participant-joined', this.handleParticipantJoined);
                 this.callObject.off('app-message', this.handleAppMessage);
                 this.callObject.off('participant-left', this.handleParticipantLeft);
+                this.callObject.off('network-connection', this.handleNetworkConnection);
                 _a.label = 1;
               case 1:
                 _a.trys.push([1, 3,, 4]);

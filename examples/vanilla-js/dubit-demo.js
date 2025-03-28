@@ -136,6 +136,42 @@ async function startCall() {
   }
 }
 
+function addNetworkTest(translator) {
+  let parentEl = document.querySelector('#network-stats>div')
+  let childEl = document.createElement('div')
+  childEl.classList.add('flex', 'gap-1')
+  parentEl.appendChild(childEl)
+  setInterval(async () => {
+    const statsInfo = await translator?.getNetworkStats()
+    childEl.innerHTML = `
+      <ul>
+        <li>
+          Network Status:
+          ${statsInfo.threshold}
+        </li>
+        <li>
+          Network Quality:
+          ${statsInfo.quality}
+        </li>
+        <li>
+          Audio send:
+          ${statsInfo?.stats ? Math.floor(statsInfo.stats?.latest.audioSendBitsPerSecond / 1000).toString() + ' kb/s' : '⚠️'}
+        </li>
+        <li>
+          Audio recv:
+          ${statsInfo?.stats ? Math.floor(statsInfo.stats?.latest.audioRecvBitsPerSecond / 1000).toString() + ' kb/s' : '⚠️'}
+        </li>
+        <li>
+          Worst send packet loss:
+          ${statsInfo?.stats ? Math.floor(statsInfo.stats?.worstAudioSendPacketLoss * 100) : 100}%
+        </li>
+        <li>Worst recv packet loss:
+          ${statsInfo?.stats ? Math.floor(statsInfo.stats?.worstAudioRecvPacketLoss * 100) : 100}%
+        </li>
+      </ul>`
+  }, 5000)
+}
+
 // Add a translator with specific language pairs and devices
 async function addTranslator(translatorId) {
   if (!dubitInstance) {
@@ -173,7 +209,9 @@ async function addTranslator(translatorId) {
       version: '2',
       keywords: false,
       translationBeep: false,
+      onNetworkConnection: (event) => console.log('Network Connection', event),
     })
+    addNetworkTest(translator)
 
     const logDiv = document.getElementById('log')
     translator.onTranslatedTrackReady((track) => {
