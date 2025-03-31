@@ -4,6 +4,7 @@ import Daily, {
   DailyEventObjectParticipant,
   DailyEventObjectParticipantLeft,
   DailyEventObjectTrack,
+  DailyNetworkStats,
   DailyParticipantsObject,
 } from '@daily-co/daily-js'
 
@@ -24,6 +25,8 @@ export type DubitCreateParams = {
   loggerCallback?: ((log: DubitUserLog) => void) | null
 }
 
+export type NetworkStats = DailyNetworkStats
+
 export type TranslatorParams = {
   fromLang: string
   toLang: string
@@ -35,6 +38,9 @@ export type TranslatorParams = {
   inputAudioTrack: MediaStreamTrack | null
   metadata?: Record<string, any>
   outputDeviceId?: string
+  onTranslatedTrackReady?: (track: MediaStreamTrack) => void
+  onCaptions?: (caption: CaptionEvent) => void
+  onNetworkQualityChange: (stats: NetworkStats) => void
 }
 
 export type LanguageType = {
@@ -62,9 +68,11 @@ export interface DubitUserLog {
 }
 
 function enhanceError(baseMessage: string, originalError: any): Error {
-  const enhancedError = new Error(
-    `${baseMessage}. Original error: ${originalError?.message || 'No original error message'}`,
-  )
+  let errorMessage = baseMessage
+  if (originalError?.message) {
+    errorMessage += ` Original error: ${originalError?.message}`
+  }
+  const enhancedError = new Error(errorMessage)
   enhancedError.stack = originalError?.stack
   try {
     if (typeof structuredClone === 'function') {
@@ -417,6 +425,7 @@ export class Translator {
 
   private onTranslatedTrackCallback: ((track: MediaStreamTrack) => void) | null = null
   private onCaptionsCallback: ((caption: CaptionEvent) => void) | null = null
+  private onNetworkQualityChangeCallback: ((event: NetworkStats) => void) | null = null
 
   public onDestroy?: () => void
   public getInstanceId = () => this.instanceId
@@ -445,6 +454,11 @@ export class Translator {
     this.metadata = params.metadata ? safeSerializeMetadata(params.metadata) : {}
     this.outputDeviceId = params.outputDeviceId
     this.loggerCallback = params.loggerCallback || null
+    if (params.onTranslatedTrackReady)
+      this.onTranslatedTrackCallback = params.onTranslatedTrackReady
+    if (params.onCaptions) this.onCaptionsCallback = params.onCaptions
+    if (params.onNetworkQualityChange)
+      this.onNetworkQualityChangeCallback = params.onNetworkQualityChange
   }
 
   private _log(
@@ -481,7 +495,7 @@ export class Translator {
         stage: 'callObjectCreated',
       })
     } catch (error) {
-      const enhancedError = enhanceError('Failed to create Daily call object', error)
+      const enhancedError = enhanceError('Failed to create call object', error)
       this._log(DubitLogEvents.TRANSLATOR_INIT_FAILED_CALL_OBJECT, undefined, enhancedError)
       throw enhancedError
     }
@@ -510,7 +524,7 @@ export class Translator {
         },
       })
     } catch (error) {
-      const enhancedError = enhanceError('Failed to join Daily call', error)
+      const enhancedError = enhanceError('Failed to establish connection', error)
       this._log(DubitLogEvents.TRANSLATOR_JOIN_FAILED, { roomUrl: this.roomUrl }, enhancedError)
       await this.callObject?.destroy() // Clean up partially created call object
       this.callObject = null
@@ -563,6 +577,7 @@ export class Translator {
     this.callObject.on('participant-joined', this.handleParticipantJoined)
     this.callObject.on('app-message', this.handleAppMessage)
     this.callObject.on('participant-left', this.handleParticipantLeft)
+    this.callObject.on('network-quality-change', this.handleNetworkQualityChange)
 
     this._log(DubitLogEvents.TRANSLATOR_INIT_COMPLETE, {
       fromLang: this.fromLang,
@@ -648,10 +663,13 @@ export class Translator {
         participantName: event.participant.user_name,
       })
       if (this.translatedTrack) {
-        // Add null check
         this.translatedTrack = null
       }
     }
+  }
+
+  private handleNetworkQualityChange = (event: NetworkStats) => {
+    this.onNetworkQualityChangeCallback?.(event as NetworkStats)
   }
 
   private async registerParticipant(participantId: string): Promise<void> {
@@ -868,6 +886,10 @@ export class Translator {
     return this.translatedTrack
   }
 
+  public async getNetworkStats(): Promise<NetworkStats> {
+    return this.callObject.getNetworkStats()
+  }
+
   public async destroy(): Promise<void> {
     const participantId = this.participantId // Capture before nulling
     this._log(DubitLogEvents.TRANSLATOR_DESTROYED, {
@@ -880,6 +902,7 @@ export class Translator {
       this.callObject.off('participant-joined', this.handleParticipantJoined)
       this.callObject.off('app-message', this.handleAppMessage)
       this.callObject.off('participant-left', this.handleParticipantLeft)
+      this.callObject.off('network-quality-change', this.handleNetworkQualityChange)
 
       try {
         await this.callObject.leave()
