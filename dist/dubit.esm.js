@@ -416,7 +416,7 @@ var Translator = /** @class */function () {
     this.loggerCallback = null;
     this.onTranslatedTrackCallback = null;
     this.onCaptionsCallback = null;
-    this.onNetworkConnectionCallback = null;
+    this.onNetworkQualityChangeCallback = null;
     this.getInstanceId = function () {
       return _this.instanceId;
     };
@@ -483,14 +483,13 @@ var Translator = /** @class */function () {
           participantName: event.participant.user_name
         });
         if (_this.translatedTrack) {
-          // Add null check
           _this.translatedTrack = null;
         }
       }
     };
-    this.handleNetworkConnection = function (event) {
+    this.handleNetworkQualityChange = function (event) {
       var _a;
-      (_a = _this.onNetworkConnectionCallback) === null || _a === void 0 ? void 0 : _a.call(_this, event);
+      (_a = _this.onNetworkQualityChangeCallback) === null || _a === void 0 ? void 0 : _a.call(_this, event);
     };
     this.instanceId = params.instanceId;
     this.roomUrl = params.roomUrl;
@@ -509,7 +508,7 @@ var Translator = /** @class */function () {
     this.loggerCallback = params.loggerCallback || null;
     if (params.onTranslatedTrackReady) this.onTranslatedTrackCallback = params.onTranslatedTrackReady;
     if (params.onCaptions) this.onCaptionsCallback = params.onCaptions;
-    if (params.onNetworkConnection) this.onNetworkConnectionCallback = params.onNetworkConnection;
+    if (params.onNetworkQualityChange) this.onNetworkQualityChangeCallback = params.onNetworkQualityChange;
   }
   Translator.prototype._log = function (eventDef, internalData, originalError, messageParams) {
     logUserEvent(this.loggerCallback, eventDef, this.constructor.name, internalData, originalError, messageParams);
@@ -638,7 +637,7 @@ var Translator = /** @class */function () {
             this.callObject.on('participant-joined', this.handleParticipantJoined);
             this.callObject.on('app-message', this.handleAppMessage);
             this.callObject.on('participant-left', this.handleParticipantLeft);
-            this.callObject.on('network-connection', this.handleNetworkConnection);
+            this.callObject.on('network-quality-change', this.handleNetworkQualityChange);
             this._log(DubitLogEvents.TRANSLATOR_INIT_COMPLETE, {
               fromLang: this.fromLang,
               toLang: this.toLang,
@@ -927,7 +926,7 @@ var Translator = /** @class */function () {
             this.callObject.off('participant-joined', this.handleParticipantJoined);
             this.callObject.off('app-message', this.handleAppMessage);
             this.callObject.off('participant-left', this.handleParticipantLeft);
-            this.callObject.off('network-connection', this.handleNetworkConnection);
+            this.callObject.off('network-quality-change', this.handleNetworkQualityChange);
             _a.label = 1;
           case 1:
             _a.trys.push([1, 3,, 4]);

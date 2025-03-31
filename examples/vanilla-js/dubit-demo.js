@@ -146,12 +146,12 @@ function addNetworkTest(translator) {
     childEl.innerHTML = `
       <ul>
         <li>
-          Network Status:
-          ${statsInfo.threshold}
+          Network State:
+          ${statsInfo.networkState}
         </li>
         <li>
-          Network Quality:
-          ${statsInfo.quality}
+          Network State Reason:
+          ${statsInfo.networkStateReasons}
         </li>
         <li>
           Audio send:
@@ -209,7 +209,7 @@ async function addTranslator(translatorId) {
       version: '2',
       keywords: false,
       translationBeep: false,
-      onNetworkConnection: (event) => console.log('Network Connection', event),
+      onNetworkQualityChange: (event) => console.log('Network Quality Change', event),
     })
     addNetworkTest(translator)
 

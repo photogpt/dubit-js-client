@@ -1,7 +1,6 @@
 import Daily, {
   DailyCall,
   DailyEventObjectAppMessage,
-  DailyEventObjectNetworkConnectionEvent,
   DailyEventObjectParticipant,
   DailyEventObjectParticipantLeft,
   DailyEventObjectTrack,
@@ -26,6 +25,8 @@ export type DubitCreateParams = {
   loggerCallback?: ((log: DubitUserLog) => void) | null
 }
 
+export type NetworkStats = DailyNetworkStats
+
 export type TranslatorParams = {
   fromLang: string
   toLang: string
@@ -39,7 +40,7 @@ export type TranslatorParams = {
   outputDeviceId?: string
   onTranslatedTrackReady?: (track: MediaStreamTrack) => void
   onCaptions?: (caption: CaptionEvent) => void
-  onNetworkConnection?: (networkConnectionEvent: DailyEventObjectNetworkConnectionEvent) => void
+  onNetworkQualityChange: (stats: NetworkStats) => void
 }
 
 export type LanguageType = {
@@ -424,9 +425,7 @@ export class Translator {
 
   private onTranslatedTrackCallback: ((track: MediaStreamTrack) => void) | null = null
   private onCaptionsCallback: ((caption: CaptionEvent) => void) | null = null
-  private onNetworkConnectionCallback:
-    | ((event: DailyEventObjectNetworkConnectionEvent) => void)
-    | null = null
+  private onNetworkQualityChangeCallback: ((event: NetworkStats) => void) | null = null
 
   public onDestroy?: () => void
   public getInstanceId = () => this.instanceId
@@ -458,7 +457,8 @@ export class Translator {
     if (params.onTranslatedTrackReady)
       this.onTranslatedTrackCallback = params.onTranslatedTrackReady
     if (params.onCaptions) this.onCaptionsCallback = params.onCaptions
-    if (params.onNetworkConnection) this.onNetworkConnectionCallback = params.onNetworkConnection
+    if (params.onNetworkQualityChange)
+      this.onNetworkQualityChangeCallback = params.onNetworkQualityChange
   }
 
   private _log(
@@ -577,7 +577,7 @@ export class Translator {
     this.callObject.on('participant-joined', this.handleParticipantJoined)
     this.callObject.on('app-message', this.handleAppMessage)
     this.callObject.on('participant-left', this.handleParticipantLeft)
-    this.callObject.on('network-connection', this.handleNetworkConnection)
+    this.callObject.on('network-quality-change', this.handleNetworkQualityChange)
 
     this._log(DubitLogEvents.TRANSLATOR_INIT_COMPLETE, {
       fromLang: this.fromLang,
@@ -663,14 +663,13 @@ export class Translator {
         participantName: event.participant.user_name,
       })
       if (this.translatedTrack) {
-        // Add null check
         this.translatedTrack = null
       }
     }
   }
 
-  private handleNetworkConnection = (event: DailyEventObjectNetworkConnectionEvent) => {
-    this.onNetworkConnectionCallback?.(event)
+  private handleNetworkQualityChange = (event: NetworkStats) => {
+    this.onNetworkQualityChangeCallback?.(event as NetworkStats)
   }
 
   private async registerParticipant(participantId: string): Promise<void> {
@@ -887,7 +886,7 @@ export class Translator {
     return this.translatedTrack
   }
 
-  public async getNetworkStats(): Promise<DailyNetworkStats> {
+  public async getNetworkStats(): Promise<NetworkStats> {
     return this.callObject.getNetworkStats()
   }
 
@@ -903,7 +902,7 @@ export class Translator {
       this.callObject.off('participant-joined', this.handleParticipantJoined)
       this.callObject.off('app-message', this.handleAppMessage)
       this.callObject.off('participant-left', this.handleParticipantLeft)
-      this.callObject.off('network-connection', this.handleNetworkConnection)
+      this.callObject.off('network-quality-change', this.handleNetworkQualityChange)
 
       try {
         await this.callObject.leave()

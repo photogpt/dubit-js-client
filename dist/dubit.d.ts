@@ -1,4 +1,4 @@
-import { DailyEventObjectNetworkConnectionEvent, DailyNetworkStats } from '@daily-co/daily-js';
+import { DailyNetworkStats } from '@daily-co/daily-js';
 export type CaptionEvent = {
     participant_id: string;
     timestamp: string;
@@ -14,6 +14,7 @@ export type DubitCreateParams = {
     apiUrl?: string;
     loggerCallback?: ((log: DubitUserLog) => void) | null;
 };
+export type NetworkStats = DailyNetworkStats;
 export type TranslatorParams = {
     fromLang: string;
     toLang: string;
@@ -27,7 +28,7 @@ export type TranslatorParams = {
     outputDeviceId?: string;
     onTranslatedTrackReady?: (track: MediaStreamTrack) => void;
     onCaptions?: (caption: CaptionEvent) => void;
-    onNetworkConnection?: (networkConnectionEvent: DailyEventObjectNetworkConnectionEvent) => void;
+    onNetworkQualityChange: (stats: NetworkStats) => void;
 };
 export type LanguageType = {
     langCode: string;
@@ -90,7 +91,7 @@ export declare class Translator {
     private loggerCallback;
     private onTranslatedTrackCallback;
     private onCaptionsCallback;
-    private onNetworkConnectionCallback;
+    private onNetworkQualityChangeCallback;
     onDestroy?: () => void;
     getInstanceId: () => string;
     constructor(params: {
@@ -107,7 +108,7 @@ export declare class Translator {
     private handleParticipantJoined;
     private handleAppMessage;
     private handleParticipantLeft;
-    private handleNetworkConnection;
+    private handleNetworkQualityChange;
     private registerParticipant;
     private addTranslationBot;
     onTranslatedTrackReady(callback: (translatedTrack: MediaStreamTrack) => void): void;
@@ -115,7 +116,7 @@ export declare class Translator {
     updateInputTrack(newInputTrack: MediaStreamTrack | null): Promise<void>;
     getParticipantId(): string;
     getTranslatedTrack(): MediaStreamTrack | null;
-    getNetworkStats(): Promise<DailyNetworkStats>;
+    getNetworkStats(): Promise<NetworkStats>;
     destroy(): Promise<void>;
 }
 /**
