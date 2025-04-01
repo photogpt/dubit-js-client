@@ -40,7 +40,7 @@ export type TranslatorParams = {
   outputDeviceId?: string
   onTranslatedTrackReady?: (track: MediaStreamTrack) => void
   onCaptions?: (caption: CaptionEvent) => void
-  onNetworkQualityChange: (stats: NetworkStats) => void
+  onNetworkQualityChange?: (stats: NetworkStats) => void
 }
 
 export type LanguageType = {
