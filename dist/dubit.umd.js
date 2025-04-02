@@ -230,7 +230,7 @@
           switch (_b.label) {
             case 0:
               _b.trys.push([0, 3,, 4]);
-              return [4 /*yield*/, fetch("".concat(API_URL, "/user/validate/").concat(apiKey), {
+              return [4 /*yield*/, fetch("".concat(API_URL, "/user/validate/api_key/").concat(apiKey), {
                 method: 'GET',
                 headers: {
                   'Content-Type': 'application/json'
@@ -402,6 +402,10 @@
       };
       DubitInstance.prototype.getActiveTranslators = function () {
         return this.activeTranslators;
+      };
+      DubitInstance.prototype.getRoomId = function () {
+        var parts = this.roomUrl.split('/');
+        return parts[parts.length - 1] || '';
       };
       return DubitInstance;
     }();

@@ -69,6 +69,7 @@ export declare class DubitInstance {
     _log(eventDef: DubitLogEventDef, internalData?: any, originalError?: Error, messageParams?: Record<string, any>): void;
     addTranslator(params: TranslatorParams): Promise<Translator>;
     getActiveTranslators(): Map<string, Translator>;
+    getRoomId(): string;
 }
 export declare class Translator {
     private instanceId;

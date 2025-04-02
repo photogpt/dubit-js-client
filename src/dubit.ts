@@ -228,7 +228,7 @@ export function getSupportedLanguages(): LanguageType[] {
 
 export async function validateApiKey(apiKey: string): Promise<boolean> {
   try {
-    const response = await fetch(`${API_URL}/user/validate/${apiKey}`, {
+    const response = await fetch(`${API_URL}/user/validate/api_key/${apiKey}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -398,6 +398,11 @@ export class DubitInstance {
 
   public getActiveTranslators(): Map<string, Translator> {
     return this.activeTranslators
+  }
+
+  public getRoomId(): string {
+    const parts = this.roomUrl.split('/');
+    return parts[parts.length - 1] || '';
   }
 }
 
@@ -687,7 +692,7 @@ export class Translator {
       if (!response.ok) {
         try {
           errorData = await response.json()
-        } catch {}
+        } catch { }
         const errorMessage =
           errorData?.message || `Failed API call to register participant (HTTP ${response.status})`
         const error = new Error(errorMessage)
@@ -749,7 +754,7 @@ export class Translator {
       if (!response.ok) {
         try {
           errorData = await response.json()
-        } catch {}
+        } catch { }
         const errorMessage =
           errorData?.message ||
           `Failed API call to request translator service (HTTP ${response.status})`
@@ -1028,7 +1033,7 @@ export function routeTrackToDevice(
     context: audioContext,
     sourceNode: sourceNode,
     pullElement: pullElement,
-    stop: function () {
+    stop: function() {
       this.sourceNode.disconnect()
       this.pullElement.pause()
       this.pullElement.srcObject = null
