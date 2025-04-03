@@ -417,7 +417,7 @@ var Translator = /** @class */function () {
     this.callObject = null;
     this.translatedTrack = null;
     this.participantId = '';
-    this.translatorParticipantId = ''; // participant_id of translator
+    this.translatorParticipantId = '';
     // private participantTracks: Map<string, MediaStreamTrack> = new Map();
     this.outputDeviceId = null;
     this.loggerCallback = null;
@@ -531,7 +531,7 @@ var Translator = /** @class */function () {
     var toLangLabel = (_b = SUPPORTED_LANGUAGES.find(function (x) {
       return x.langCode == _this.toLang;
     })) === null || _b === void 0 ? void 0 : _b.label;
-    return "Translator ".concat(fromLangLabel, " -> ").concat(toLangLabel);
+    return "Translator ".concat(fromLangLabel, " -> ").concat(toLangLabel, " : ").concat(this.participantId);
   };
   Translator.prototype.init = function () {
     return __awaiter(this, void 0, void 0, function () {
