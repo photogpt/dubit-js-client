@@ -228,7 +228,7 @@ export function getSupportedLanguages(): LanguageType[] {
 
 export async function validateApiKey(apiKey: string): Promise<boolean> {
   try {
-    const response = await fetch(`${API_URL}/user/validate/${apiKey}`, {
+    const response = await fetch(`${API_URL}/user/validate/api_key/${apiKey}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -399,6 +399,11 @@ export class DubitInstance {
   public getActiveTranslators(): Map<string, Translator> {
     return this.activeTranslators
   }
+
+  public getRoomId(): string {
+    const parts = this.roomUrl.split('/');
+    return parts[parts.length - 1] || '';
+  }
 }
 
 export class Translator {
@@ -419,6 +424,7 @@ export class Translator {
   private callObject: DailyCall | null = null
   private translatedTrack: MediaStreamTrack | null = null
   private participantId = ''
+  private translatorParticipantId = ''
   // private participantTracks: Map<string, MediaStreamTrack> = new Map();
   private outputDeviceId: string | null = null
   private loggerCallback: ((log: DubitUserLog) => void) | null = null
@@ -623,11 +629,12 @@ export class Translator {
     if (event?.participant?.local) return
 
     if (event.participant.user_name.includes(this._getTranslatorLabel())) {
+      this.translatorParticipantId = event.participant.session_id;
       this._log(DubitLogEvents.TRANSLATOR_PARTICIPANT_JOINED, {
-        participantId: event.participant.session_id,
+        participantId: this.translatorParticipantId,
         participantName: event.participant.user_name,
       })
-      this.callObject?.updateParticipant(event.participant.session_id, {
+      this.callObject?.updateParticipant(this.translatorParticipantId, {
         setSubscribedTracks: {
           audio: true,
         },
@@ -687,7 +694,7 @@ export class Translator {
       if (!response.ok) {
         try {
           errorData = await response.json()
-        } catch {}
+        } catch { }
         const errorMessage =
           errorData?.message || `Failed API call to register participant (HTTP ${response.status})`
         const error = new Error(errorMessage)
@@ -749,7 +756,7 @@ export class Translator {
       if (!response.ok) {
         try {
           errorData = await response.json()
-        } catch {}
+        } catch { }
         const errorMessage =
           errorData?.message ||
           `Failed API call to request translator service (HTTP ${response.status})`
@@ -890,6 +897,17 @@ export class Translator {
     return this.callObject.getNetworkStats()
   }
 
+  public getTranslatorVolumeLevel(): number {
+    if (!this.translatorParticipantId) {
+      return 0;
+    }
+
+    const remoteParticipantsAudioLevels = this.callObject.getRemoteParticipantsAudioLevel();
+
+    return remoteParticipantsAudioLevels[this.translatorParticipantId] ?? 0;
+
+  }
+
   public async destroy(): Promise<void> {
     const participantId = this.participantId // Capture before nulling
     this._log(DubitLogEvents.TRANSLATOR_DESTROYED, {
@@ -947,6 +965,8 @@ export class Translator {
       participantId,
     })
   }
+
+
 }
 
 const audioContexts = new Map()
@@ -1028,7 +1048,7 @@ export function routeTrackToDevice(
     context: audioContext,
     sourceNode: sourceNode,
     pullElement: pullElement,
-    stop: function () {
+    stop: function() {
       this.sourceNode.disconnect()
       this.pullElement.pause()
       this.pullElement.srcObject = null

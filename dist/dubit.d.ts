@@ -69,6 +69,7 @@ export declare class DubitInstance {
     _log(eventDef: DubitLogEventDef, internalData?: any, originalError?: Error, messageParams?: Record<string, any>): void;
     addTranslator(params: TranslatorParams): Promise<Translator>;
     getActiveTranslators(): Map<string, Translator>;
+    getRoomId(): string;
 }
 export declare class Translator {
     private instanceId;
@@ -87,6 +88,7 @@ export declare class Translator {
     private callObject;
     private translatedTrack;
     private participantId;
+    private translatorParticipantId;
     private outputDeviceId;
     private loggerCallback;
     private onTranslatedTrackCallback;
@@ -117,6 +119,7 @@ export declare class Translator {
     getParticipantId(): string;
     getTranslatedTrack(): MediaStreamTrack | null;
     getNetworkStats(): Promise<NetworkStats>;
+    getTranslatorVolumeLevel(): number;
     destroy(): Promise<void>;
 }
 /**

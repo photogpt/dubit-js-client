@@ -230,7 +230,7 @@
           switch (_b.label) {
             case 0:
               _b.trys.push([0, 3,, 4]);
-              return [4 /*yield*/, fetch("".concat(API_URL, "/user/validate/").concat(apiKey), {
+              return [4 /*yield*/, fetch("".concat(API_URL, "/user/validate/api_key/").concat(apiKey), {
                 method: 'GET',
                 headers: {
                   'Content-Type': 'application/json'
@@ -403,6 +403,10 @@
       DubitInstance.prototype.getActiveTranslators = function () {
         return this.activeTranslators;
       };
+      DubitInstance.prototype.getRoomId = function () {
+        var parts = this.roomUrl.split('/');
+        return parts[parts.length - 1] || '';
+      };
       return DubitInstance;
     }();
     var Translator = /** @class */function () {
@@ -415,6 +419,7 @@
         this.callObject = null;
         this.translatedTrack = null;
         this.participantId = '';
+        this.translatorParticipantId = ''; // participant_id of translator
         // private participantTracks: Map<string, MediaStreamTrack> = new Map();
         this.outputDeviceId = null;
         this.loggerCallback = null;
@@ -452,11 +457,12 @@
           var _a, _b;
           if ((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) return;
           if (event.participant.user_name.includes(_this._getTranslatorLabel())) {
+            _this.translatorParticipantId = event.participant.session_id;
             _this._log(DubitLogEvents.TRANSLATOR_PARTICIPANT_JOINED, {
-              participantId: event.participant.session_id,
+              participantId: _this.translatorParticipantId,
               participantName: event.participant.user_name
             });
-            (_b = _this.callObject) === null || _b === void 0 ? void 0 : _b.updateParticipant(event.participant.session_id, {
+            (_b = _this.callObject) === null || _b === void 0 ? void 0 : _b.updateParticipant(_this.translatorParticipantId, {
               setSubscribedTracks: {
                 audio: true
               }
@@ -912,6 +918,14 @@
             return [2 /*return*/, this.callObject.getNetworkStats()];
           });
         });
+      };
+      Translator.prototype.getTranslatorVolumeLevel = function () {
+        var _a;
+        if (!this.translatorParticipantId) {
+          return 0;
+        }
+        var remoteParticipantsAudioLevels = this.callObject.getRemoteParticipantsAudioLevel();
+        return (_a = remoteParticipantsAudioLevels[this.translatorParticipantId]) !== null && _a !== void 0 ? _a : 0;
       };
       Translator.prototype.destroy = function () {
         return __awaiter(this, void 0, void 0, function () {
