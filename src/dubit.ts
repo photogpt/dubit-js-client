@@ -424,6 +424,7 @@ export class Translator {
   private callObject: DailyCall | null = null
   private translatedTrack: MediaStreamTrack | null = null
   private participantId = ''
+  private translatorParticipantId = ''
   // private participantTracks: Map<string, MediaStreamTrack> = new Map();
   private outputDeviceId: string | null = null
   private loggerCallback: ((log: DubitUserLog) => void) | null = null
@@ -628,11 +629,12 @@ export class Translator {
     if (event?.participant?.local) return
 
     if (event.participant.user_name.includes(this._getTranslatorLabel())) {
+      this.translatorParticipantId = event.participant.session_id;
       this._log(DubitLogEvents.TRANSLATOR_PARTICIPANT_JOINED, {
-        participantId: event.participant.session_id,
+        participantId: this.translatorParticipantId,
         participantName: event.participant.user_name,
       })
-      this.callObject?.updateParticipant(event.participant.session_id, {
+      this.callObject?.updateParticipant(this.translatorParticipantId, {
         setSubscribedTracks: {
           audio: true,
         },
@@ -895,6 +897,17 @@ export class Translator {
     return this.callObject.getNetworkStats()
   }
 
+  public getTranslatorVolumeLevel(): number {
+    if (!this.translatorParticipantId) {
+      return 0;
+    }
+
+    const remoteParticipantsAudioLevels = this.callObject.getRemoteParticipantsAudioLevel();
+
+    return remoteParticipantsAudioLevels[this.translatorParticipantId] ?? 0;
+
+  }
+
   public async destroy(): Promise<void> {
     const participantId = this.participantId // Capture before nulling
     this._log(DubitLogEvents.TRANSLATOR_DESTROYED, {
@@ -952,6 +965,8 @@ export class Translator {
       participantId,
     })
   }
+
+
 }
 
 const audioContexts = new Map()

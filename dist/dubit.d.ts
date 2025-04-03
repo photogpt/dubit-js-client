@@ -88,6 +88,7 @@ export declare class Translator {
     private callObject;
     private translatedTrack;
     private participantId;
+    private translatorParticipantId;
     private outputDeviceId;
     private loggerCallback;
     private onTranslatedTrackCallback;
@@ -118,6 +119,7 @@ export declare class Translator {
     getParticipantId(): string;
     getTranslatedTrack(): MediaStreamTrack | null;
     getNetworkStats(): Promise<NetworkStats>;
+    getTranslatorVolumeLevel(): number;
     destroy(): Promise<void>;
 }
 /**

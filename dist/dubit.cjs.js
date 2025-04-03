@@ -417,6 +417,7 @@ var Translator = /** @class */function () {
     this.callObject = null;
     this.translatedTrack = null;
     this.participantId = '';
+    this.translatorParticipantId = ''; // participant_id of translator
     // private participantTracks: Map<string, MediaStreamTrack> = new Map();
     this.outputDeviceId = null;
     this.loggerCallback = null;
@@ -454,11 +455,12 @@ var Translator = /** @class */function () {
       var _a, _b;
       if ((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) return;
       if (event.participant.user_name.includes(_this._getTranslatorLabel())) {
+        _this.translatorParticipantId = event.participant.session_id;
         _this._log(DubitLogEvents.TRANSLATOR_PARTICIPANT_JOINED, {
-          participantId: event.participant.session_id,
+          participantId: _this.translatorParticipantId,
           participantName: event.participant.user_name
         });
-        (_b = _this.callObject) === null || _b === void 0 ? void 0 : _b.updateParticipant(event.participant.session_id, {
+        (_b = _this.callObject) === null || _b === void 0 ? void 0 : _b.updateParticipant(_this.translatorParticipantId, {
           setSubscribedTracks: {
             audio: true
           }
@@ -914,6 +916,14 @@ var Translator = /** @class */function () {
         return [2 /*return*/, this.callObject.getNetworkStats()];
       });
     });
+  };
+  Translator.prototype.getTranslatorVolumeLevel = function () {
+    var _a;
+    if (!this.translatorParticipantId) {
+      return 0;
+    }
+    var remoteParticipantsAudioLevels = this.callObject.getRemoteParticipantsAudioLevel();
+    return (_a = remoteParticipantsAudioLevels[this.translatorParticipantId]) !== null && _a !== void 0 ? _a : 0;
   };
   Translator.prototype.destroy = function () {
     return __awaiter(this, void 0, void 0, function () {
