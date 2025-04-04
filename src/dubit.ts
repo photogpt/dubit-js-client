@@ -401,8 +401,8 @@ export class DubitInstance {
   }
 
   public getRoomId(): string {
-    const parts = this.roomUrl.split('/');
-    return parts[parts.length - 1] || '';
+    const parts = this.roomUrl.split('/')
+    return parts[parts.length - 1] || ''
   }
 }
 
@@ -629,7 +629,7 @@ export class Translator {
     if (event?.participant?.local) return
 
     if (event.participant.user_name.includes(this._getTranslatorLabel())) {
-      this.translatorParticipantId = event.participant.session_id;
+      this.translatorParticipantId = event.participant.session_id
       this._log(DubitLogEvents.TRANSLATOR_PARTICIPANT_JOINED, {
         participantId: this.translatorParticipantId,
         participantName: event.participant.user_name,
@@ -694,7 +694,7 @@ export class Translator {
       if (!response.ok) {
         try {
           errorData = await response.json()
-        } catch { }
+        } catch {}
         const errorMessage =
           errorData?.message || `Failed API call to register participant (HTTP ${response.status})`
         const error = new Error(errorMessage)
@@ -756,7 +756,7 @@ export class Translator {
       if (!response.ok) {
         try {
           errorData = await response.json()
-        } catch { }
+        } catch {}
         const errorMessage =
           errorData?.message ||
           `Failed API call to request translator service (HTTP ${response.status})`
@@ -899,13 +899,12 @@ export class Translator {
 
   public getTranslatorVolumeLevel(): number {
     if (!this.translatorParticipantId) {
-      return 0;
+      return 0
     }
 
-    const remoteParticipantsAudioLevels = this.callObject.getRemoteParticipantsAudioLevel();
+    const remoteParticipantsAudioLevels = this.callObject.getRemoteParticipantsAudioLevel()
 
-    return remoteParticipantsAudioLevels[this.translatorParticipantId] ?? 0;
-
+    return remoteParticipantsAudioLevels[this.translatorParticipantId] ?? 0
   }
 
   public async destroy(): Promise<void> {
@@ -965,8 +964,6 @@ export class Translator {
       participantId,
     })
   }
-
-
 }
 
 const audioContexts = new Map()
@@ -1048,7 +1045,7 @@ export function routeTrackToDevice(
     context: audioContext,
     sourceNode: sourceNode,
     pullElement: pullElement,
-    stop: function() {
+    stop: function () {
       this.sourceNode.disconnect()
       this.pullElement.pause()
       this.pullElement.srcObject = null
@@ -1121,7 +1118,7 @@ export const SUPPORTED_TRANSLATOR_VERSIONS: VersionType[] = [
 export const SUPPORTED_LANGUAGES: LanguageType[] = [
   {
     langCode: 'multi',
-    label: 'Multilingual (Spanish + English)',
+    label: 'Multilingual',
   },
   {
     langCode: 'bg',
