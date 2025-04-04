@@ -487,7 +487,7 @@ export class Translator {
   private _getTranslatorLabel(): string {
     let fromLangLabel = SUPPORTED_LANGUAGES.find((x) => x.langCode == this.fromLang)?.label
     let toLangLabel = SUPPORTED_LANGUAGES.find((x) => x.langCode == this.toLang)?.label
-    return `Translator ${fromLangLabel} -> ${toLangLabel}`
+    return `Translator ${fromLangLabel} -> ${toLangLabel} : ${this.participantId}`
   }
 
   public async init(): Promise<void> {

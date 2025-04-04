@@ -533,7 +533,7 @@
         var toLangLabel = (_b = SUPPORTED_LANGUAGES.find(function (x) {
           return x.langCode == _this.toLang;
         })) === null || _b === void 0 ? void 0 : _b.label;
-        return "Translator ".concat(fromLangLabel, " -> ").concat(toLangLabel);
+        return "Translator ".concat(fromLangLabel, " -> ").concat(toLangLabel, " : ").concat(this.participantId);
       };
       Translator.prototype.init = function () {
         return __awaiter(this, void 0, void 0, function () {
