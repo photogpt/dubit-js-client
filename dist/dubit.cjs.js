@@ -417,7 +417,7 @@ var Translator = /** @class */function () {
     this.callObject = null;
     this.translatedTrack = null;
     this.participantId = '';
-    this.translatorParticipantId = ''; // participant_id of translator
+    this.translatorParticipantId = '';
     // private participantTracks: Map<string, MediaStreamTrack> = new Map();
     this.outputDeviceId = null;
     this.loggerCallback = null;
@@ -1103,7 +1103,7 @@ var SUPPORTED_TRANSLATOR_VERSIONS = [{
 }];
 var SUPPORTED_LANGUAGES = [{
   langCode: 'multi',
-  label: 'Multilingual (Spanish + English)'
+  label: 'Multilingual'
 }, {
   langCode: 'bg',
   label: 'Bulgarian'
