@@ -8,6 +8,9 @@ import Daily, {
   DailyParticipantsObject,
 } from '@daily-co/daily-js'
 
+import EventEmitter from 'eventemitter3';
+
+
 export type CaptionEvent = {
   participant_id: string
   timestamp: string
@@ -151,6 +154,51 @@ function logUserEvent(
     }
   }
 }
+
+
+
+interface DubitEventTypes {
+  'app-message': (e: DailyEventObjectAppMessage) => void;
+  'participant-joined': (e: DailyEventObjectParticipant) => void;
+  'participant-left': (e: DailyEventObjectParticipantLeft) => void;
+}
+
+
+export class DubitEventEmitter extends EventEmitter<DubitEventTypes> {}
+
+export async function listenEvents(url: string): Promise<{
+  dubitEmitter: DubitEventEmitter;
+  getRemoteAudioLevels: (participantId: string) => number;
+}> {
+  const emitter = new DubitEventEmitter();
+
+  const callObj = Daily.createCallObject({
+    allowMultipleCallInstances: true,
+    videoSource: false,
+    subscribeToTracksAutomatically: false,
+  });
+
+  callObj.on('app-message', (ev) => emitter.emit('app-message', ev));
+  callObj.on('participant-joined', (ev) => emitter.emit('participant-joined', ev));
+  callObj.on('participant-left', (ev) => emitter.emit('participant-left', ev));
+  
+  await callObj.join({
+    url,
+    audioSource: false,
+    videoSource: false,
+    subscribeToTracksAutomatically: false,
+  });
+
+  return {
+    dubitEmitter: emitter,
+    getRemoteAudioLevels: (participantId: string) => {
+      const remoteParticipantsAudioLevels = callObj.getRemoteParticipantsAudioLevel();
+      return remoteParticipantsAudioLevels[participantId] ?? 0;
+    }
+  }
+}
+
+
 
 export async function createNewInstance({
   token,
@@ -887,6 +935,10 @@ export class Translator {
 
   public getParticipantId(): string {
     return this.participantId
+  }
+
+  public getTranslatorParticipantId(): string {
+    return this.translatorParticipantId
   }
 
   public getTranslatedTrack(): MediaStreamTrack | null {

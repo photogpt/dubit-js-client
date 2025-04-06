@@ -1,4 +1,5 @@
-import { DailyNetworkStats } from '@daily-co/daily-js';
+import { DailyEventObjectAppMessage, DailyEventObjectParticipant, DailyEventObjectParticipantLeft, DailyNetworkStats } from '@daily-co/daily-js';
+import EventEmitter from 'eventemitter3';
 export type CaptionEvent = {
     participant_id: string;
     timestamp: string;
@@ -49,6 +50,17 @@ export interface DubitUserLog {
     internalData?: any;
     error?: Error;
 }
+interface DubitEventTypes {
+    'app-message': (e: DailyEventObjectAppMessage) => void;
+    'participant-joined': (e: DailyEventObjectParticipant) => void;
+    'participant-left': (e: DailyEventObjectParticipantLeft) => void;
+}
+export declare class DubitEventEmitter extends EventEmitter<DubitEventTypes> {
+}
+export declare function listenEvents(url: string): Promise<{
+    dubitEmitter: DubitEventEmitter;
+    getRemoteAudioLevels: (participantId: string) => number;
+}>;
 export declare function createNewInstance({ token, apiUrl, loggerCallback, }: DubitCreateParams): Promise<DubitInstance>;
 export declare function getSupportedLanguages(): LanguageType[];
 export declare function validateApiKey(apiKey: string): Promise<boolean>;
@@ -117,6 +129,7 @@ export declare class Translator {
     onCaptions(callback: (caption: CaptionEvent) => void): void;
     updateInputTrack(newInputTrack: MediaStreamTrack | null): Promise<void>;
     getParticipantId(): string;
+    getTranslatorParticipantId(): string;
     getTranslatedTrack(): MediaStreamTrack | null;
     getNetworkStats(): Promise<NetworkStats>;
     getTranslatorVolumeLevel(): number;
