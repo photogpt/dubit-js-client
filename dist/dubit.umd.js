@@ -565,7 +565,10 @@
             case 1:
               _a.sent();
               return [2 /*return*/, {
-                dubitEmitter: emitter
+                dubitEmitter: emitter,
+                leaveCall: function () {
+                  callObj.leave();
+                }
               }];
           }
         });

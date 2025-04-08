@@ -60,6 +60,7 @@ export declare class DubitEventEmitter extends EventEmitter<DubitEventTypes> {
 }
 export declare function listenEvents(url: string): Promise<{
     dubitEmitter: DubitEventEmitter;
+    leaveCall: () => void;
 }>;
 export declare function createNewInstance({ token, apiUrl, loggerCallback, }: DubitCreateParams): Promise<DubitInstance>;
 export declare function getSupportedLanguages(): LanguageType[];
