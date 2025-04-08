@@ -157,6 +157,23 @@ function logUserEvent(
 
 
 
+// util functions 
+
+function checkWord(a: string, b: string): boolean {
+
+  const bList = b.split(' ').filter(Boolean);
+
+  const found = bList.reduce((i, w) => {
+    if (i == -1) return -1;
+    const index = a.indexOf(w, i);
+    return index == -1 ? -1 : index + w.length;
+  }, 0);
+
+  return found != -1;
+
+}
+
+
 interface DubitEventTypes {
   'app-message': (e: DailyEventObjectAppMessage) => void;
   'participant-joined': (e: DailyEventObjectParticipant) => void;
@@ -164,7 +181,7 @@ interface DubitEventTypes {
 }
 
 
-export class DubitEventEmitter extends EventEmitter<DubitEventTypes> {}
+export class DubitEventEmitter extends EventEmitter<DubitEventTypes> { }
 
 export async function listenEvents(url: string): Promise<{
   dubitEmitter: DubitEventEmitter;
@@ -181,7 +198,7 @@ export async function listenEvents(url: string): Promise<{
   callObj.on('app-message', (ev) => emitter.emit('app-message', ev));
   callObj.on('participant-joined', (ev) => emitter.emit('participant-joined', ev));
   callObj.on('participant-left', (ev) => emitter.emit('participant-left', ev));
-  
+
   await callObj.join({
     url,
     audioSource: false,
@@ -646,7 +663,7 @@ export class Translator {
       event.track &&
       event.track.kind === 'audio' &&
       !event?.participant?.local &&
-      event.participant.user_name.includes(this._getTranslatorLabel())
+      checkWord(event.participant.user_name, this._getTranslatorLabel())
     if (isValidTranslatorTrack) {
       this._log(
         DubitLogEvents.TRANSLATOR_TRACK_READY,
@@ -676,7 +693,7 @@ export class Translator {
   private handleParticipantJoined = (event: DailyEventObjectParticipant) => {
     if (event?.participant?.local) return
 
-    if (event.participant.user_name.includes(this._getTranslatorLabel())) {
+    if (checkWord(event.participant.user_name, this._getTranslatorLabel())) {
       this.translatorParticipantId = event.participant.session_id;
       this._log(DubitLogEvents.TRANSLATOR_PARTICIPANT_JOINED, {
         participantId: this.translatorParticipantId,
@@ -711,7 +728,7 @@ export class Translator {
   private handleParticipantLeft = (event: DailyEventObjectParticipantLeft) => {
     if (
       !event.participant.local &&
-      event.participant.user_name.includes(this._getTranslatorLabel())
+      checkWord(event.participant.user_name, this._getTranslatorLabel())
     ) {
       this._log(DubitLogEvents.TRANSLATOR_PARTICIPANT_LEFT, {
         participantId: event.participant.session_id,

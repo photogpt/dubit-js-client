@@ -512,6 +512,16 @@ function logUserEvent(loggerCallback, eventDef, className, internalData, origina
     }
   }
 }
+// util functions 
+function checkWord(a, b) {
+  var bList = b.split(' ').filter(Boolean);
+  var found = bList.reduce(function (i, w) {
+    if (i == -1) return -1;
+    var index = a.indexOf(w, i);
+    return index == -1 ? -1 : index + w.length;
+  }, 0);
+  return found != -1;
+}
 var DubitEventEmitter = /** @class */function (_super) {
   __extends(DubitEventEmitter, _super);
   function DubitEventEmitter() {
@@ -846,7 +856,7 @@ var Translator = /** @class */function () {
     this.handleTrackStarted = function (event) {
       var _a;
       // TODO: add better identifier like some kind of id in metadata or user_participant_id in translator name
-      var isValidTranslatorTrack = event.track && event.track.kind === 'audio' && !((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) && event.participant.user_name.includes(_this._getTranslatorLabel());
+      var isValidTranslatorTrack = event.track && event.track.kind === 'audio' && !((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) && checkWord(event.participant.user_name, _this._getTranslatorLabel());
       if (isValidTranslatorTrack) {
         _this._log(DubitLogEvents.TRANSLATOR_TRACK_READY, {
           participantName: event.participant.user_name,
@@ -870,7 +880,7 @@ var Translator = /** @class */function () {
     this.handleParticipantJoined = function (event) {
       var _a, _b;
       if ((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) return;
-      if (event.participant.user_name.includes(_this._getTranslatorLabel())) {
+      if (checkWord(event.participant.user_name, _this._getTranslatorLabel())) {
         _this.translatorParticipantId = event.participant.session_id;
         _this._log(DubitLogEvents.TRANSLATOR_PARTICIPANT_JOINED, {
           participantId: _this.translatorParticipantId,
@@ -901,7 +911,7 @@ var Translator = /** @class */function () {
       }
     };
     this.handleParticipantLeft = function (event) {
-      if (!event.participant.local && event.participant.user_name.includes(_this._getTranslatorLabel())) {
+      if (!event.participant.local && checkWord(event.participant.user_name, _this._getTranslatorLabel())) {
         _this._log(DubitLogEvents.TRANSLATOR_PARTICIPANT_LEFT, {
           participantId: event.participant.session_id,
           participantName: event.participant.user_name
