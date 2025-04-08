@@ -1,4 +1,4 @@
-import { DailyEventObjectAppMessage, DailyEventObjectParticipant, DailyEventObjectParticipantLeft, DailyNetworkStats } from '@daily-co/daily-js';
+import { DailyEventObjectAppMessage, DailyEventObjectParticipant, DailyEventObjectParticipantLeft, DailyEventObjectRemoteParticipantsAudioLevel, DailyNetworkStats } from '@daily-co/daily-js';
 import EventEmitter from 'eventemitter3';
 export type CaptionEvent = {
     participant_id: string;
@@ -54,12 +54,12 @@ interface DubitEventTypes {
     'app-message': (e: DailyEventObjectAppMessage) => void;
     'participant-joined': (e: DailyEventObjectParticipant) => void;
     'participant-left': (e: DailyEventObjectParticipantLeft) => void;
+    'remote-participants-audio-level': (e: DailyEventObjectRemoteParticipantsAudioLevel) => void;
 }
 export declare class DubitEventEmitter extends EventEmitter<DubitEventTypes> {
 }
 export declare function listenEvents(url: string): Promise<{
     dubitEmitter: DubitEventEmitter;
-    getRemoteAudioLevels: (participantId: string) => number;
 }>;
 export declare function createNewInstance({ token, apiUrl, loggerCallback, }: DubitCreateParams): Promise<DubitInstance>;
 export declare function getSupportedLanguages(): LanguageType[];

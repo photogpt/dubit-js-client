@@ -539,6 +539,7 @@ function listenEvents(url) {
             videoSource: false,
             subscribeToTracksAutomatically: false
           });
+          callObj.startRemoteParticipantsAudioLevelObserver(100);
           callObj.on('app-message', function (ev) {
             return emitter.emit('app-message', ev);
           });
@@ -548,21 +549,19 @@ function listenEvents(url) {
           callObj.on('participant-left', function (ev) {
             return emitter.emit('participant-left', ev);
           });
+          callObj.on('remote-participants-audio-level', function (ev) {
+            return emitter.emit('remote-participants-audio-level', ev);
+          });
           return [4 /*yield*/, callObj.join({
             url: url,
             audioSource: false,
             videoSource: false,
-            subscribeToTracksAutomatically: false
+            subscribeToTracksAutomatically: true
           })];
         case 1:
           _a.sent();
           return [2 /*return*/, {
-            dubitEmitter: emitter,
-            getRemoteAudioLevels: function (participantId) {
-              var _a;
-              var remoteParticipantsAudioLevels = callObj.getRemoteParticipantsAudioLevel();
-              return (_a = remoteParticipantsAudioLevels[participantId]) !== null && _a !== void 0 ? _a : 0;
-            }
+            dubitEmitter: emitter
           }];
       }
     });

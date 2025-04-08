@@ -3,6 +3,7 @@ import Daily, {
   DailyEventObjectAppMessage,
   DailyEventObjectParticipant,
   DailyEventObjectParticipantLeft,
+  DailyEventObjectRemoteParticipantsAudioLevel,
   DailyEventObjectTrack,
   DailyNetworkStats,
   DailyParticipantsObject,
@@ -178,14 +179,15 @@ interface DubitEventTypes {
   'app-message': (e: DailyEventObjectAppMessage) => void;
   'participant-joined': (e: DailyEventObjectParticipant) => void;
   'participant-left': (e: DailyEventObjectParticipantLeft) => void;
+  'remote-participants-audio-level': (e: DailyEventObjectRemoteParticipantsAudioLevel) => void;
 }
 
 
 export class DubitEventEmitter extends EventEmitter<DubitEventTypes> { }
 
 export async function listenEvents(url: string): Promise<{
-  dubitEmitter: DubitEventEmitter;
-  getRemoteAudioLevels: (participantId: string) => number;
+  dubitEmitter: DubitEventEmitter,
+  leaveCall: () => void
 }> {
   const emitter = new DubitEventEmitter();
 
@@ -195,23 +197,27 @@ export async function listenEvents(url: string): Promise<{
     subscribeToTracksAutomatically: false,
   });
 
+
+  callObj.startRemoteParticipantsAudioLevelObserver(100);
+
+
   callObj.on('app-message', (ev) => emitter.emit('app-message', ev));
   callObj.on('participant-joined', (ev) => emitter.emit('participant-joined', ev));
   callObj.on('participant-left', (ev) => emitter.emit('participant-left', ev));
+  callObj.on('remote-participants-audio-level', (ev) => emitter.emit('remote-participants-audio-level', ev));
+
 
   await callObj.join({
     url,
     audioSource: false,
     videoSource: false,
-    subscribeToTracksAutomatically: false,
+    subscribeToTracksAutomatically: true,
   });
 
   return {
     dubitEmitter: emitter,
-    getRemoteAudioLevels: (participantId: string) => {
-      const remoteParticipantsAudioLevels = callObj.getRemoteParticipantsAudioLevel();
-      return remoteParticipantsAudioLevels[participantId] ?? 0;
-    }
+    leaveCall: () => { callObj.leave() }
+
   }
 }
 
