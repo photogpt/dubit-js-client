@@ -1553,149 +1553,149 @@ var SUPPORTED_TRANSLATOR_VERSIONS = [{
   version: '3'
 }];
 var SUPPORTED_LANGUAGES = [{
-  langCode: 'multi',
-  label: 'Multilingual (Spanish + English)'
+  'label': 'Multilingual (Spanish + English)',
+  'langCode': 'multi'
 }, {
-  langCode: 'bg',
-  label: 'Bulgarian'
+  'label': 'Bulgarian',
+  'langCode': 'bg'
 }, {
-  langCode: 'ca',
-  label: 'Catalan'
+  'label': 'Catalan',
+  'langCode': 'ca'
 }, {
-  langCode: 'zh-CN',
-  label: 'Chinese (Mainland China)'
+  'label': 'Chinese (China)',
+  'langCode': 'zh-CN'
 }, {
-  langCode: 'zh-TW',
-  label: 'Chinese (Taiwan)'
+  'label': 'Chinese (Taiwan)',
+  'langCode': 'zh-TW'
 }, {
-  langCode: 'zh-HK',
-  label: 'Chinese (Traditional, Hong Kong)'
+  'label': 'Chinese (Hong Kong SAR China)',
+  'langCode': 'zh-HK'
 }, {
-  langCode: 'cs',
-  label: 'Czech'
+  'label': 'Czech',
+  'langCode': 'cs'
 }, {
-  langCode: 'da',
-  label: 'Danish'
+  'label': 'Danish',
+  'langCode': 'da'
 }, {
-  langCode: 'da-DK',
-  label: 'Danish'
+  'label': 'Danish (Denmark)',
+  'langCode': 'da-DK'
 }, {
-  langCode: 'nl',
-  label: 'Dutch'
+  'label': 'Dutch',
+  'langCode': 'nl'
 }, {
-  langCode: 'en',
-  label: 'English'
+  'label': 'English',
+  'langCode': 'en'
 }, {
-  langCode: 'en-US',
-  label: 'English (United States)'
+  'label': 'English (United States)',
+  'langCode': 'en-US'
 }, {
-  langCode: 'en-AU',
-  label: 'English (Australia)'
+  'label': 'English (Australia)',
+  'langCode': 'en-AU'
 }, {
-  langCode: 'en-GB',
-  label: 'English (United Kingdom)'
+  'label': 'English (United Kingdom)',
+  'langCode': 'en-GB'
 }, {
-  langCode: 'en-NZ',
-  label: 'English (New Zealand)'
+  'label': 'English (New Zealand)',
+  'langCode': 'en-NZ'
 }, {
-  langCode: 'en-IN',
-  label: 'English (India)'
+  'label': 'English (India)',
+  'langCode': 'en-IN'
 }, {
-  langCode: 'et',
-  label: 'Estonian'
+  'label': 'Estonian',
+  'langCode': 'et'
 }, {
-  langCode: 'fi',
-  label: 'Finnish'
+  'label': 'Finnish',
+  'langCode': 'fi'
 }, {
-  langCode: 'nl-BE',
-  label: 'Flemish'
+  'label': 'Dutch (Belgium)',
+  'langCode': 'nl-BE'
 }, {
-  langCode: 'fr',
-  label: 'French'
+  'label': 'French',
+  'langCode': 'fr'
 }, {
-  langCode: 'fr-CA',
-  label: 'French (Canada)'
+  'label': 'French (Canada)',
+  'langCode': 'fr-CA'
 }, {
-  langCode: 'de',
-  label: 'German'
+  'label': 'German',
+  'langCode': 'de'
 }, {
-  langCode: 'de-CH',
-  label: 'German (Switzerland)'
+  'label': 'German (Switzerland)',
+  'langCode': 'de-CH'
 }, {
-  langCode: 'el',
-  label: 'Greek'
+  'label': 'Greek',
+  'langCode': 'el'
 }, {
-  langCode: 'hi',
-  label: 'Hindi'
+  'label': 'Hindi',
+  'langCode': 'hi'
 }, {
-  langCode: 'hu',
-  label: 'Hungarian'
+  'label': 'Hungarian',
+  'langCode': 'hu'
 }, {
-  langCode: 'id',
-  label: 'Indonesian'
+  'label': 'Indonesian',
+  'langCode': 'id'
 }, {
-  langCode: 'it',
-  label: 'Italian'
+  'label': 'Italian',
+  'langCode': 'it'
 }, {
-  langCode: 'ja',
-  label: 'Japanese'
+  'label': 'Japanese',
+  'langCode': 'ja'
 }, {
-  langCode: 'ko-KR',
-  label: 'Korean'
+  'label': 'Korean (South Korea)',
+  'langCode': 'ko-KR'
 }, {
-  langCode: 'lv',
-  label: 'Latvian'
+  'label': 'Latvian',
+  'langCode': 'lv'
 }, {
-  langCode: 'lt',
-  label: 'Lithuanian'
+  'label': 'Lithuanian',
+  'langCode': 'lt'
 }, {
-  langCode: 'ms',
-  label: 'Malay'
+  'label': 'Malay',
+  'langCode': 'ms'
 }, {
-  langCode: 'no',
-  label: 'Norwegian'
+  'label': 'Norwegian',
+  'langCode': 'no'
 }, {
-  langCode: 'pl',
-  label: 'Polish'
+  'label': 'Polish',
+  'langCode': 'pl'
 }, {
-  langCode: 'pt',
-  label: 'Portuguese'
+  'label': 'Portuguese',
+  'langCode': 'pt'
 }, {
-  langCode: 'pt-BR',
-  label: 'Portuguese (Brazil)'
+  'label': 'Portuguese (Brazil)',
+  'langCode': 'pt-BR'
 }, {
-  langCode: 'pt-PT',
-  label: 'Portuguese (Portugal)'
+  'label': 'Portuguese (Portugal)',
+  'langCode': 'pt-PT'
 }, {
-  langCode: 'ro',
-  label: 'Romanian'
+  'label': 'Romanian',
+  'langCode': 'ro'
 }, {
-  langCode: 'ru',
-  label: 'Russian'
+  'label': 'Russian',
+  'langCode': 'ru'
 }, {
-  langCode: 'sk',
-  label: 'Slovak'
+  'label': 'Slovak',
+  'langCode': 'sk'
 }, {
-  langCode: 'es',
-  label: 'Spanish'
+  'label': 'Spanish',
+  'langCode': 'es'
 }, {
-  langCode: 'es-419',
-  label: 'Spanish (Latin America & Caribbean)'
+  'label': 'Spanish (Latin America)',
+  'langCode': 'es-419'
 }, {
-  langCode: 'sv-SE',
-  label: 'Swedish (Sweden)'
+  'label': 'Swedish (Sweden)',
+  'langCode': 'sv-SE'
 }, {
-  langCode: 'th-TH',
-  label: 'Thai (Thailand)'
+  'label': 'Thai (Thailand)',
+  'langCode': 'th-TH'
 }, {
-  langCode: 'tr',
-  label: 'Turkish'
+  'label': 'Turkish',
+  'langCode': 'tr'
 }, {
-  langCode: 'uk',
-  label: 'Ukrainian'
+  'label': 'Ukrainian',
+  'langCode': 'uk'
 }, {
-  langCode: 'vi',
-  label: 'Vietnamese'
+  'label': 'Vietnamese',
+  'langCode': 'vi'
 }];
 var DubitLogEvents = {
   // Instance Lifecycle

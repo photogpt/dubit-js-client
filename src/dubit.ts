@@ -1214,198 +1214,54 @@ export const SUPPORTED_TRANSLATOR_VERSIONS: VersionType[] = [
 ]
 
 export const SUPPORTED_LANGUAGES: LanguageType[] = [
-  {
-    langCode: 'multi',
-    label: 'Multilingual (Spanish + English)',
-  },
-  {
-    langCode: 'bg',
-    label: 'Bulgarian',
-  },
-  {
-    langCode: 'ca',
-    label: 'Catalan',
-  },
-  {
-    langCode: 'zh-CN',
-    label: 'Chinese (Mainland China)',
-  },
-  {
-    langCode: 'zh-TW',
-    label: 'Chinese (Taiwan)',
-  },
-  {
-    langCode: 'zh-HK',
-    label: 'Chinese (Traditional, Hong Kong)',
-  },
-  {
-    langCode: 'cs',
-    label: 'Czech',
-  },
-  {
-    langCode: 'da',
-    label: 'Danish',
-  },
-  {
-    langCode: 'da-DK',
-    label: 'Danish',
-  },
-  {
-    langCode: 'nl',
-    label: 'Dutch',
-  },
-  {
-    langCode: 'en',
-    label: 'English',
-  },
-  {
-    langCode: 'en-US',
-    label: 'English (United States)',
-  },
-  {
-    langCode: 'en-AU',
-    label: 'English (Australia)',
-  },
-  {
-    langCode: 'en-GB',
-    label: 'English (United Kingdom)',
-  },
-  {
-    langCode: 'en-NZ',
-    label: 'English (New Zealand)',
-  },
-  {
-    langCode: 'en-IN',
-    label: 'English (India)',
-  },
-  {
-    langCode: 'et',
-    label: 'Estonian',
-  },
-  {
-    langCode: 'fi',
-    label: 'Finnish',
-  },
-  {
-    langCode: 'nl-BE',
-    label: 'Flemish',
-  },
-  {
-    langCode: 'fr',
-    label: 'French',
-  },
-  {
-    langCode: 'fr-CA',
-    label: 'French (Canada)',
-  },
-  {
-    langCode: 'de',
-    label: 'German',
-  },
-  {
-    langCode: 'de-CH',
-    label: 'German (Switzerland)',
-  },
-  {
-    langCode: 'el',
-    label: 'Greek',
-  },
-  {
-    langCode: 'hi',
-    label: 'Hindi',
-  },
-  {
-    langCode: 'hu',
-    label: 'Hungarian',
-  },
-  {
-    langCode: 'id',
-    label: 'Indonesian',
-  },
-  {
-    langCode: 'it',
-    label: 'Italian',
-  },
-  {
-    langCode: 'ja',
-    label: 'Japanese',
-  },
-  {
-    langCode: 'ko-KR',
-    label: 'Korean',
-  },
-  {
-    langCode: 'lv',
-    label: 'Latvian',
-  },
-  {
-    langCode: 'lt',
-    label: 'Lithuanian',
-  },
-  {
-    langCode: 'ms',
-    label: 'Malay',
-  },
-  {
-    langCode: 'no',
-    label: 'Norwegian',
-  },
-  {
-    langCode: 'pl',
-    label: 'Polish',
-  },
-  {
-    langCode: 'pt',
-    label: 'Portuguese',
-  },
-  {
-    langCode: 'pt-BR',
-    label: 'Portuguese (Brazil)',
-  },
-  {
-    langCode: 'pt-PT',
-    label: 'Portuguese (Portugal)',
-  },
-  {
-    langCode: 'ro',
-    label: 'Romanian',
-  },
-  {
-    langCode: 'ru',
-    label: 'Russian',
-  },
-  {
-    langCode: 'sk',
-    label: 'Slovak',
-  },
-  {
-    langCode: 'es',
-    label: 'Spanish',
-  },
-  {
-    langCode: 'es-419',
-    label: 'Spanish (Latin America & Caribbean)',
-  },
-  {
-    langCode: 'sv-SE',
-    label: 'Swedish (Sweden)',
-  },
-  {
-    langCode: 'th-TH',
-    label: 'Thai (Thailand)',
-  },
-  {
-    langCode: 'tr',
-    label: 'Turkish',
-  },
-  {
-    langCode: 'uk',
-    label: 'Ukrainian',
-  },
-  {
-    langCode: 'vi',
-    label: 'Vietnamese',
-  },
+  { 'label': 'Multilingual (Spanish + English)', 'langCode': 'multi' },
+  { 'label': 'Bulgarian', 'langCode': 'bg' },
+  { 'label': 'Catalan', 'langCode': 'ca' },
+  { 'label': 'Chinese (China)', 'langCode': 'zh-CN' },
+  { 'label': 'Chinese (Taiwan)', 'langCode': 'zh-TW' },
+  { 'label': 'Chinese (Hong Kong SAR China)', 'langCode': 'zh-HK' },
+  { 'label': 'Czech', 'langCode': 'cs' },
+  { 'label': 'Danish', 'langCode': 'da' },
+  { 'label': 'Danish (Denmark)', 'langCode': 'da-DK' },
+  { 'label': 'Dutch', 'langCode': 'nl' },
+  { 'label': 'English', 'langCode': 'en' },
+  { 'label': 'English (United States)', 'langCode': 'en-US' },
+  { 'label': 'English (Australia)', 'langCode': 'en-AU' },
+  { 'label': 'English (United Kingdom)', 'langCode': 'en-GB' },
+  { 'label': 'English (New Zealand)', 'langCode': 'en-NZ' },
+  { 'label': 'English (India)', 'langCode': 'en-IN' },
+  { 'label': 'Estonian', 'langCode': 'et' },
+  { 'label': 'Finnish', 'langCode': 'fi' },
+  { 'label': 'Dutch (Belgium)', 'langCode': 'nl-BE' },
+  { 'label': 'French', 'langCode': 'fr' },
+  { 'label': 'French (Canada)', 'langCode': 'fr-CA' },
+  { 'label': 'German', 'langCode': 'de' },
+  { 'label': 'German (Switzerland)', 'langCode': 'de-CH' },
+  { 'label': 'Greek', 'langCode': 'el' },
+  { 'label': 'Hindi', 'langCode': 'hi' },
+  { 'label': 'Hungarian', 'langCode': 'hu' },
+  { 'label': 'Indonesian', 'langCode': 'id' },
+  { 'label': 'Italian', 'langCode': 'it' },
+  { 'label': 'Japanese', 'langCode': 'ja' },
+  { 'label': 'Korean (South Korea)', 'langCode': 'ko-KR' },
+  { 'label': 'Latvian', 'langCode': 'lv' },
+  { 'label': 'Lithuanian', 'langCode': 'lt' },
+  { 'label': 'Malay', 'langCode': 'ms' },
+  { 'label': 'Norwegian', 'langCode': 'no' },
+  { 'label': 'Polish', 'langCode': 'pl' },
+  { 'label': 'Portuguese', 'langCode': 'pt' },
+  { 'label': 'Portuguese (Brazil)', 'langCode': 'pt-BR' },
+  { 'label': 'Portuguese (Portugal)', 'langCode': 'pt-PT' },
+  { 'label': 'Romanian', 'langCode': 'ro' },
+  { 'label': 'Russian', 'langCode': 'ru' },
+  { 'label': 'Slovak', 'langCode': 'sk' },
+  { 'label': 'Spanish', 'langCode': 'es' },
+  { 'label': 'Spanish (Latin America)', 'langCode': 'es-419' },
+  { 'label': 'Swedish (Sweden)', 'langCode': 'sv-SE' },
+  { 'label': 'Thai (Thailand)', 'langCode': 'th-TH' },
+  { 'label': 'Turkish', 'langCode': 'tr' },
+  { 'label': 'Ukrainian', 'langCode': 'uk' },
+  { 'label': 'Vietnamese', 'langCode': 'vi' }
 ]
 
 export const DubitLogEvents = {
