@@ -1358,6 +1358,26 @@
         var remoteParticipantsAudioLevels = this.callObject.getRemoteParticipantsAudioLevel();
         return (_a = remoteParticipantsAudioLevels[this.translatorParticipantId]) !== null && _a !== void 0 ? _a : 0;
       };
+      Translator.prototype.startRemoteParticipantsAudioLevelObserver = function () {
+        if (!this.callObject) {
+          var error = new Error('Translator not initialized (callObject is null)');
+          this._log(DubitLogEvents.INTERNAL_ERROR, {
+            reason: 'Not initialized'
+          }, error);
+          throw error;
+        }
+        this.callObject.startRemoteParticipantsAudioLevelObserver();
+      };
+      Translator.prototype.stopRemoteParticipantsAudioLevelObserver = function () {
+        if (!this.callObject) {
+          var error = new Error('Translator not initialized (callObject is null)');
+          this._log(DubitLogEvents.INTERNAL_ERROR, {
+            reason: 'Not initialized'
+          }, error);
+          throw error;
+        }
+        this.callObject.stopRemoteParticipantsAudioLevelObserver();
+      };
       Translator.prototype.destroy = function () {
         return __awaiter(this, void 0, void 0, function () {
           var participantId, leaveError_1, destroyError_1;

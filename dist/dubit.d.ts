@@ -134,6 +134,8 @@ export declare class Translator {
     getTranslatedTrack(): MediaStreamTrack | null;
     getNetworkStats(): Promise<NetworkStats>;
     getTranslatorVolumeLevel(): number;
+    startRemoteParticipantsAudioLevelObserver(): void;
+    stopRemoteParticipantsAudioLevelObserver(): void;
     destroy(): Promise<void>;
 }
 /**

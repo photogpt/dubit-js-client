@@ -978,9 +978,29 @@ export class Translator {
     }
 
     const remoteParticipantsAudioLevels = this.callObject.getRemoteParticipantsAudioLevel();
-
     return remoteParticipantsAudioLevels[this.translatorParticipantId] ?? 0;
 
+  }
+
+  public startRemoteParticipantsAudioLevelObserver() {
+
+    if (!this.callObject) {
+      const error = new Error('Translator not initialized (callObject is null)')
+      this._log(DubitLogEvents.INTERNAL_ERROR, { reason: 'Not initialized' }, error)
+      throw error
+    }
+
+    this.callObject.startRemoteParticipantsAudioLevelObserver();
+
+  }
+
+  public stopRemoteParticipantsAudioLevelObserver() {
+    if (!this.callObject) {
+      const error = new Error('Translator not initialized (callObject is null)')
+      this._log(DubitLogEvents.INTERNAL_ERROR, { reason: 'Not initialized' }, error)
+      throw error
+    }
+    this.callObject.stopRemoteParticipantsAudioLevelObserver();
   }
 
   public async destroy(): Promise<void> {
