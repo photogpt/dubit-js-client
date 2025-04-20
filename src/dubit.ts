@@ -516,6 +516,7 @@ export class Translator {
         hasAudioSource: !!audioSource,
       })
       await this.callObject.join({
+        userName: this.metadata['userName'] || 'Dubit User',
         url: this.roomUrl,
         audioSource,
         videoSource: false,
