@@ -748,6 +748,9 @@
       }).includes(params.version)) {
         return new Error("Unsupported version: ".concat(params.version, ". Supported versions: ").concat(SUPPORTED_TRANSLATOR_VERSIONS));
       }
+      if (params.fromLang.includes('ar') && params.version != '1' || params.toLang.includes('ar') && params.version != '1') {
+        return new Error("Arabic not supported in this version, Supported version: 1");
+      }
       return null;
     }
     var DubitInstance = /** @class */function () {
@@ -1555,149 +1558,197 @@
       version: '3'
     }];
     var SUPPORTED_LANGUAGES = [{
-      'label': 'Multilingual (Spanish + English)',
-      'langCode': 'multi'
+      label: 'Multilingual (Spanish + English)',
+      langCode: 'multi'
     }, {
-      'label': 'Bulgarian',
-      'langCode': 'bg'
+      label: 'Bulgarian',
+      langCode: 'bg'
     }, {
-      'label': 'Catalan',
-      'langCode': 'ca'
+      label: 'Catalan',
+      langCode: 'ca'
     }, {
-      'label': 'Chinese (China)',
-      'langCode': 'zh-CN'
+      label: 'Chinese (China)',
+      langCode: 'zh-CN'
     }, {
-      'label': 'Chinese (Taiwan)',
-      'langCode': 'zh-TW'
+      label: 'Chinese (Taiwan)',
+      langCode: 'zh-TW'
     }, {
-      'label': 'Chinese (Hong Kong SAR China)',
-      'langCode': 'zh-HK'
+      label: 'Chinese (Hong Kong SAR China)',
+      langCode: 'zh-HK'
     }, {
-      'label': 'Czech',
-      'langCode': 'cs'
+      label: 'Czech',
+      langCode: 'cs'
     }, {
-      'label': 'Danish',
-      'langCode': 'da'
+      label: 'Danish',
+      langCode: 'da'
     }, {
-      'label': 'Danish (Denmark)',
-      'langCode': 'da-DK'
+      label: 'Danish (Denmark)',
+      langCode: 'da-DK'
     }, {
-      'label': 'Dutch',
-      'langCode': 'nl'
+      label: 'Dutch',
+      langCode: 'nl'
     }, {
-      'label': 'English',
-      'langCode': 'en'
+      label: 'Dutch (Belgium)',
+      langCode: 'nl-BE'
     }, {
-      'label': 'English (United States)',
-      'langCode': 'en-US'
+      label: 'English',
+      langCode: 'en'
     }, {
-      'label': 'English (Australia)',
-      'langCode': 'en-AU'
+      label: 'English (United States)',
+      langCode: 'en-US'
     }, {
-      'label': 'English (United Kingdom)',
-      'langCode': 'en-GB'
+      label: 'English (Australia)',
+      langCode: 'en-AU'
     }, {
-      'label': 'English (New Zealand)',
-      'langCode': 'en-NZ'
+      label: 'English (United Kingdom)',
+      langCode: 'en-GB'
     }, {
-      'label': 'English (India)',
-      'langCode': 'en-IN'
+      label: 'English (New Zealand)',
+      langCode: 'en-NZ'
     }, {
-      'label': 'Estonian',
-      'langCode': 'et'
+      label: 'English (India)',
+      langCode: 'en-IN'
     }, {
-      'label': 'Finnish',
-      'langCode': 'fi'
+      label: 'Estonian',
+      langCode: 'et'
     }, {
-      'label': 'Dutch (Belgium)',
-      'langCode': 'nl-BE'
+      label: 'Finnish',
+      langCode: 'fi'
     }, {
-      'label': 'French',
-      'langCode': 'fr'
+      label: 'French',
+      langCode: 'fr'
     }, {
-      'label': 'French (Canada)',
-      'langCode': 'fr-CA'
+      label: 'French (Canada)',
+      langCode: 'fr-CA'
     }, {
-      'label': 'German',
-      'langCode': 'de'
+      label: 'German',
+      langCode: 'de'
     }, {
-      'label': 'German (Switzerland)',
-      'langCode': 'de-CH'
+      label: 'German (Switzerland)',
+      langCode: 'de-CH'
     }, {
-      'label': 'Greek',
-      'langCode': 'el'
+      label: 'Greek',
+      langCode: 'el'
     }, {
-      'label': 'Hindi',
-      'langCode': 'hi'
+      label: 'Hindi',
+      langCode: 'hi'
     }, {
-      'label': 'Hungarian',
-      'langCode': 'hu'
+      label: 'Hungarian',
+      langCode: 'hu'
     }, {
-      'label': 'Indonesian',
-      'langCode': 'id'
+      label: 'Indonesian',
+      langCode: 'id'
     }, {
-      'label': 'Italian',
-      'langCode': 'it'
+      label: 'Italian',
+      langCode: 'it'
     }, {
-      'label': 'Japanese',
-      'langCode': 'ja'
+      label: 'Japanese',
+      langCode: 'ja'
     }, {
-      'label': 'Korean (South Korea)',
-      'langCode': 'ko-KR'
+      label: 'Korean (South Korea)',
+      langCode: 'ko-KR'
     }, {
-      'label': 'Latvian',
-      'langCode': 'lv'
+      label: 'Latvian',
+      langCode: 'lv'
     }, {
-      'label': 'Lithuanian',
-      'langCode': 'lt'
+      label: 'Lithuanian',
+      langCode: 'lt'
     }, {
-      'label': 'Malay',
-      'langCode': 'ms'
+      label: 'Malay',
+      langCode: 'ms'
     }, {
-      'label': 'Norwegian',
-      'langCode': 'no'
+      label: 'Norwegian',
+      langCode: 'no'
     }, {
-      'label': 'Polish',
-      'langCode': 'pl'
+      label: 'Polish',
+      langCode: 'pl'
     }, {
-      'label': 'Portuguese',
-      'langCode': 'pt'
+      label: 'Portuguese',
+      langCode: 'pt'
     }, {
-      'label': 'Portuguese (Brazil)',
-      'langCode': 'pt-BR'
+      label: 'Portuguese (Brazil)',
+      langCode: 'pt-BR'
     }, {
-      'label': 'Portuguese (Portugal)',
-      'langCode': 'pt-PT'
+      label: 'Portuguese (Portugal)',
+      langCode: 'pt-PT'
     }, {
-      'label': 'Romanian',
-      'langCode': 'ro'
+      label: 'Romanian',
+      langCode: 'ro'
     }, {
-      'label': 'Russian',
-      'langCode': 'ru'
+      label: 'Russian',
+      langCode: 'ru'
     }, {
-      'label': 'Slovak',
-      'langCode': 'sk'
+      label: 'Slovak',
+      langCode: 'sk'
     }, {
-      'label': 'Spanish',
-      'langCode': 'es'
+      label: 'Spanish',
+      langCode: 'es'
     }, {
-      'label': 'Spanish (Latin America)',
-      'langCode': 'es-419'
+      label: 'Spanish (Latin America)',
+      langCode: 'es-419'
     }, {
-      'label': 'Swedish (Sweden)',
-      'langCode': 'sv-SE'
+      label: 'Swedish (Sweden)',
+      langCode: 'sv-SE'
     }, {
-      'label': 'Thai (Thailand)',
-      'langCode': 'th-TH'
+      label: 'Thai (Thailand)',
+      langCode: 'th-TH'
     }, {
-      'label': 'Turkish',
-      'langCode': 'tr'
+      label: 'Turkish',
+      langCode: 'tr'
     }, {
-      'label': 'Ukrainian',
-      'langCode': 'uk'
+      label: 'Ukrainian',
+      langCode: 'uk'
     }, {
-      'label': 'Vietnamese',
-      'langCode': 'vi'
+      label: 'Vietnamese',
+      langCode: 'vi'
+    }, {
+      label: 'Arabic (United Arab Emirates)',
+      langCode: 'ar-AE'
+    }, {
+      label: 'Arabic (Bahrain)',
+      langCode: 'ar-BH'
+    }, {
+      label: 'Arabic (Algeria)',
+      langCode: 'ar-DZ'
+    }, {
+      label: 'Arabic (Egypt)',
+      langCode: 'ar-EG'
+    }, {
+      label: 'Arabic (Iraq)',
+      langCode: 'ar-IQ'
+    }, {
+      label: 'Arabic (Jordan)',
+      langCode: 'ar-JO'
+    }, {
+      label: 'Arabic (Kuwait)',
+      langCode: 'ar-KW'
+    }, {
+      label: 'Arabic (Lebanon)',
+      langCode: 'ar-LB'
+    }, {
+      label: 'Arabic (Libya)',
+      langCode: 'ar-LY'
+    }, {
+      label: 'Arabic (Morocco)',
+      langCode: 'ar-MA'
+    }, {
+      label: 'Arabic (Oman)',
+      langCode: 'ar-OM'
+    }, {
+      label: 'Arabic (Qatar)',
+      langCode: 'ar-QA'
+    }, {
+      label: 'Arabic (Saudi Arabia)',
+      langCode: 'ar-SA'
+    }, {
+      label: 'Arabic (Syria)',
+      langCode: 'ar-SY'
+    }, {
+      label: 'Arabic (Tunisia)',
+      langCode: 'ar-TN'
+    }, {
+      label: 'Arabic (Yemen)',
+      langCode: 'ar-YE'
     }];
     var DubitLogEvents = {
       // Instance Lifecycle
