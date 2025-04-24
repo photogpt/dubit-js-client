@@ -744,7 +744,7 @@ function validateTranslatorParams(params) {
   }).includes(params.version)) {
     return new Error("Unsupported version: ".concat(params.version, ". Supported versions: ").concat(SUPPORTED_TRANSLATOR_VERSIONS));
   }
-  if (params.fromLang.includes('ar') && params.version == '2' || params.toLang.includes('ar') && params.version == '2') {
+  if (params.fromLang.includes('ar') && params.version != '1' || params.toLang.includes('ar') && params.version != '1') {
     return new Error("Arabic not supported in this version, Supported version: 1");
   }
   return null;
