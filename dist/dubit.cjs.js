@@ -846,12 +846,14 @@ var Translator = /** @class */function () {
     this.translationBeep = false;
     this.hqVoices = false;
     this.callObject = null;
+    this.userTrack = null;
     this.translatedTrack = null;
     this.participantId = '';
     this.translatorParticipantId = '';
     // private participantTracks: Map<string, MediaStreamTrack> = new Map();
     this.outputDeviceId = null;
     this.loggerCallback = null;
+    this.onUserTrackCallback = null;
     this.onTranslatedTrackCallback = null;
     this.onCaptionsCallback = null;
     this.onNetworkQualityChangeCallback = null;
@@ -878,6 +880,17 @@ var Translator = /** @class */function () {
             _this._log(DubitLogEvents.INTERNAL_ERROR, {
               handler: 'onTranslatedTrackCallback'
             }, enhanceError('Error in onTranslatedTrackReady callback', callbackError));
+          }
+        }
+      } else if (event.track.kind === 'audio' && event.participant.local) {
+        if (_this.onUserTrackCallback) {
+          try {
+            _this.onUserTrackCallback(event.track);
+            _this.userTrack = event.track;
+          } catch (callbackError) {
+            _this._log(DubitLogEvents.INTERNAL_ERROR, {
+              handler: 'onUserTrackCallback'
+            }, enhanceError('Error in onUserTrackReady callback', callbackError));
           }
         }
       }
@@ -1222,6 +1235,24 @@ var Translator = /** @class */function () {
       });
     });
   };
+  Translator.prototype.onUserTrackReady = function (callback) {
+    if (typeof callback !== 'function') {
+      this._log(DubitLogEvents.INTERNAL_ERROR, {
+        reason: 'Invalid callback provided to onUserTrackReady'
+      });
+      return;
+    }
+    this.onUserTrackCallback = callback;
+    if (this.userTrack) {
+      try {
+        callback(this.userTrack);
+      } catch (callbackError) {
+        this._log(DubitLogEvents.INTERNAL_ERROR, {
+          handler: 'onUserTrackReadyImmediate'
+        }, enhanceError('Error in onUserTrackReady callback (immediate invoke)', callbackError));
+      }
+    }
+  };
   Translator.prototype.onTranslatedTrackReady = function (callback) {
     if (typeof callback !== 'function') {
       this._log(DubitLogEvents.INTERNAL_ERROR, {
@@ -1455,10 +1486,14 @@ var activeRoutings = new Map();
  * Routes a WebRTC audio track to a specific output device using WebAudio
  * This implementation avoids the WebRTC track mixing issue by using the WebAudio API
  */
-function routeTrackToDevice(track, outputDeviceId, elementId) {
-  console.log("Routing track ".concat(track.id, " to device ").concat(outputDeviceId));
+function routeTrackToDevice(tracks, volumes, outputDeviceId, elementId) {
+  if (tracks.length !== volumes.length) {
+    throw new Error("`tracks` and `volumes` arrays must be the same length");
+  }
   if (!elementId) {
-    elementId = "audio-".concat(track.id);
+    elementId = "audio-".concat(tracks.map(function (t) {
+      return t.id;
+    }).join('-'));
   }
   // Clean up any existing routing for this element ID
   if (activeRoutings.has(elementId)) {
@@ -1485,12 +1520,33 @@ function routeTrackToDevice(track, outputDeviceId, elementId) {
       return console.error("Failed to resume AudioContext: ".concat(err));
     });
   }
-  var mediaStream = new MediaStream([track]);
-  var sourceNode = audioContext.createMediaStreamSource(mediaStream);
-  console.log("Created source node for track ".concat(track.id));
-  var destinationNode = audioContext.destination;
-  sourceNode.connect(destinationNode);
-  console.log("Connected track ".concat(track.id, " to destination for device ").concat(outputDeviceId));
+  var sourceNodes = [];
+  var gainNodes = [];
+  var pullElements = [];
+  tracks.forEach(function (track, i) {
+    var stream = new MediaStream([track]);
+    var source = audioContext.createMediaStreamSource(stream);
+    sourceNodes.push(source);
+    // c) Create & configure GainNode
+    var gainNode = audioContext.createGain();
+    gainNode.gain.value = volumes[i] / 100;
+    gainNodes.push(gainNode);
+    // d) Connect source → gain → destination
+    source.connect(gainNode).connect(audioContext.destination);
+    // e) Hidden <audio> to pull in WebRTC audio
+    var pullEl = document.createElement('audio');
+    pullEl.id = "pull-".concat(elementId, "-").concat(i);
+    pullEl.srcObject = stream;
+    pullEl.style.display = 'none';
+    pullEl.muted = true;
+    document.body.appendChild(pullEl);
+    pullElements.push(pullEl);
+    pullEl.play().then(function () {
+      return console.log("Pull element started for track ".concat(track.id));
+    }).catch(function (err) {
+      return console.error("Failed to start pull element: ".concat(err));
+    });
+  });
   // If the AudioContext API supports setSinkId directly, use it
   if ('setSinkId' in AudioContext.prototype) {
     audioContext //@ts-ignore
@@ -1500,36 +1556,26 @@ function routeTrackToDevice(track, outputDeviceId, elementId) {
       return console.error("Failed to set sinkId on AudioContext: ".concat(err));
     });
   }
-  // Create a hidden audio element that will pull from the WebRTC stream
-  // This is necessary to get the WebRTC subsystem to deliver the audio to WebAudio
-  var pullElement = document.createElement('audio');
-  pullElement.id = "pull-".concat(elementId);
-  pullElement.srcObject = mediaStream;
-  pullElement.style.display = 'none';
-  pullElement.muted = true; // Don't actually play through the default device
-  document.body.appendChild(pullElement);
-  // Start pulling audio through the element
-  pullElement.play().then(function () {
-    return console.log("Pull element started for track ".concat(track.id));
-  }).catch(function (err) {
-    return console.error("Failed to start pull element: ".concat(err));
-  });
-  // Create routing info object with stop method
   var routingInfo = {
     context: audioContext,
-    sourceNode: sourceNode,
-    pullElement: pullElement,
+    sourceNodes: sourceNodes,
+    gainNodes: gainNodes,
+    pullElements: pullElements,
     stop: function () {
-      this.sourceNode.disconnect();
-      this.pullElement.pause();
-      this.pullElement.srcObject = null;
-      if (this.pullElement.parentNode) {
-        document.body.removeChild(this.pullElement);
-      }
-      console.log("Stopped routing track ".concat(track.id, " to device ").concat(outputDeviceId));
+      var _this = this;
+      // disconnect & remove elements
+      this.sourceNodes.forEach(function (src, idx) {
+        src.disconnect();
+        var el = _this.pullElements[idx];
+        el.pause();
+        el.srcObject = null;
+        if (el.parentNode) {
+          el.parentNode.removeChild(el);
+        }
+      });
+      console.log("Stopped routing ".concat(tracks.length, " tracks to device ").concat(outputDeviceId));
     }
   };
-  // Store the routing for future cleanup
   activeRoutings.set(elementId, routingInfo);
   return routingInfo;
 }

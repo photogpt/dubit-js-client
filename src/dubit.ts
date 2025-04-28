@@ -503,6 +503,7 @@ export class Translator {
   private metadata?: Record<string, any>
 
   private callObject: DailyCall | null = null
+  private userTrack: MediaStreamTrack | null = null
   private translatedTrack: MediaStreamTrack | null = null
   private participantId = ''
   private translatorParticipantId = ''
@@ -510,6 +511,7 @@ export class Translator {
   private outputDeviceId: string | null = null
   private loggerCallback: ((log: DubitUserLog) => void) | null = null
 
+  private onUserTrackCallback: ((track: MediaStreamTrack) => void) | null = null
   private onTranslatedTrackCallback: ((track: MediaStreamTrack) => void) | null = null
   private onCaptionsCallback: ((caption: CaptionEvent) => void) | null = null
   private onNetworkQualityChangeCallback: ((event: NetworkStats) => void) | null = null
@@ -704,6 +706,21 @@ export class Translator {
         }
       }
     }
+
+    else if (event.track.kind === 'audio' && event.participant.local) {
+      if (this.onUserTrackCallback) {
+        try {
+          this.onUserTrackCallback(event.track)
+          this.userTrack = event.track
+        } catch (callbackError: any) {
+          this._log(
+            DubitLogEvents.INTERNAL_ERROR,
+            { handler: 'onUserTrackCallback' },
+            enhanceError('Error in onUserTrackReady callback', callbackError),
+          )
+        }
+      }
+    }
   }
 
   private handleParticipantJoined = (event: DailyEventObjectParticipant) => {
@@ -866,6 +883,28 @@ export class Translator {
         )
       }
       throw enhancedError
+    }
+  }
+
+
+  public onUserTrackReady(callback: (track: MediaStreamTrack) => void): void {
+    if (typeof callback !== 'function') {
+      this._log(DubitLogEvents.INTERNAL_ERROR, {
+        reason: 'Invalid callback provided to onUserTrackReady',
+      })
+      return
+    }
+    this.onUserTrackCallback = callback
+    if (this.userTrack) {
+      try {
+        callback(this.userTrack)
+      } catch (callbackError: any) {
+        this._log(
+          DubitLogEvents.INTERNAL_ERROR,
+          { handler: 'onUserTrackReadyImmediate' },
+          enhanceError('Error in onUserTrackReady callback (immediate invoke)', callbackError),
+        )
+      }
     }
   }
 
@@ -1082,13 +1121,18 @@ const activeRoutings = new Map()
  * This implementation avoids the WebRTC track mixing issue by using the WebAudio API
  */
 export function routeTrackToDevice(
-  track: MediaStreamTrack,
+  tracks: MediaStreamTrack[],
+  volumes: number[],  
   outputDeviceId: string,
   elementId: string,
 ): object {
-  console.log(`Routing track ${track.id} to device ${outputDeviceId}`)
+
+  if (tracks.length !== volumes.length) {
+    throw new Error("`tracks` and `volumes` arrays must be the same length");
+  }
+
   if (!elementId) {
-    elementId = `audio-${track.id}`
+    elementId = `audio-${tracks.map((t) => t.id).join('-')}`;
   }
 
   // Clean up any existing routing for this element ID
@@ -1118,12 +1162,39 @@ export function routeTrackToDevice(
       .catch((err) => console.error(`Failed to resume AudioContext: ${err}`))
   }
 
-  const mediaStream = new MediaStream([track])
-  const sourceNode = audioContext.createMediaStreamSource(mediaStream)
-  console.log(`Created source node for track ${track.id}`)
-  const destinationNode = audioContext.destination
-  sourceNode.connect(destinationNode)
-  console.log(`Connected track ${track.id} to destination for device ${outputDeviceId}`)
+  const sourceNodes: MediaStreamAudioSourceNode[] = [];
+  const gainNodes: GainNode[] = [];
+  const pullElements: HTMLAudioElement[] = [];
+
+  
+  tracks.forEach((track, i) => {
+    const stream = new MediaStream([track]);
+
+    const source = audioContext.createMediaStreamSource(stream);
+    sourceNodes.push(source);
+
+    // c) Create & configure GainNode
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = volumes[i] / 100;
+    gainNodes.push(gainNode);
+
+    // d) Connect source → gain → destination
+    source.connect(gainNode).connect(audioContext.destination);
+
+    // e) Hidden <audio> to pull in WebRTC audio
+    const pullEl = document.createElement('audio');
+    pullEl.id = `pull-${elementId}-${i}`;
+    pullEl.srcObject = stream;
+    pullEl.style.display = 'none';
+    pullEl.muted = true;
+    document.body.appendChild(pullEl);
+    pullElements.push(pullEl);
+
+    pullEl.play()
+      .then(() => console.log(`Pull element started for track ${track.id}`))
+      .catch((err) => console.error(`Failed to start pull element: ${err}`));
+  });
+
 
   // If the AudioContext API supports setSinkId directly, use it
   if ('setSinkId' in AudioContext.prototype) {
@@ -1133,42 +1204,30 @@ export function routeTrackToDevice(
       .catch((err: DOMException) => console.error(`Failed to set sinkId on AudioContext: ${err}`))
   }
 
-  // Create a hidden audio element that will pull from the WebRTC stream
-  // This is necessary to get the WebRTC subsystem to deliver the audio to WebAudio
-  const pullElement = document.createElement('audio')
-  pullElement.id = `pull-${elementId}`
-  pullElement.srcObject = mediaStream
-  pullElement.style.display = 'none'
-  pullElement.muted = true // Don't actually play through the default device
-  document.body.appendChild(pullElement)
-
-  // Start pulling audio through the element
-  pullElement
-    .play()
-    .then(() => console.log(`Pull element started for track ${track.id}`))
-    .catch((err) => console.error(`Failed to start pull element: ${err}`))
-
-  // Create routing info object with stop method
+  
   const routingInfo = {
     context: audioContext,
-    sourceNode: sourceNode,
-    pullElement: pullElement,
+    sourceNodes,
+    gainNodes,
+    pullElements,
     stop: function() {
-      this.sourceNode.disconnect()
-      this.pullElement.pause()
-      this.pullElement.srcObject = null
-      if (this.pullElement.parentNode) {
-        document.body.removeChild(this.pullElement)
-      }
-
-      console.log(`Stopped routing track ${track.id} to device ${outputDeviceId}`)
+      // disconnect & remove elements
+      this.sourceNodes.forEach((src, idx) => {
+        src.disconnect();
+        const el = this.pullElements[idx];
+        el.pause();
+        el.srcObject = null;
+        if (el.parentNode) {
+          el.parentNode.removeChild(el);
+        }
+      });
+      console.log(`Stopped routing ${tracks.length} tracks to device ${outputDeviceId}`);
     },
-  }
+  };
 
-  // Store the routing for future cleanup
-  activeRoutings.set(elementId, routingInfo)
+  activeRoutings.set(elementId, routingInfo);
+  return routingInfo;
 
-  return routingInfo
 }
 
 function safeSerializeMetadata(metadata: Record<string, any>): Record<string, any> {

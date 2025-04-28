@@ -99,11 +99,13 @@ export declare class Translator {
     private inputAudioTrack;
     private metadata?;
     private callObject;
+    private userTrack;
     private translatedTrack;
     private participantId;
     private translatorParticipantId;
     private outputDeviceId;
     private loggerCallback;
+    private onUserTrackCallback;
     private onTranslatedTrackCallback;
     private onCaptionsCallback;
     private onNetworkQualityChangeCallback;
@@ -126,6 +128,7 @@ export declare class Translator {
     private handleNetworkQualityChange;
     private registerParticipant;
     private addTranslationBot;
+    onUserTrackReady(callback: (track: MediaStreamTrack) => void): void;
     onTranslatedTrackReady(callback: (translatedTrack: MediaStreamTrack) => void): void;
     onCaptions(callback: (caption: CaptionEvent) => void): void;
     updateInputTrack(newInputTrack: MediaStreamTrack | null): Promise<void>;
@@ -142,7 +145,7 @@ export declare class Translator {
  * Routes a WebRTC audio track to a specific output device using WebAudio
  * This implementation avoids the WebRTC track mixing issue by using the WebAudio API
  */
-export declare function routeTrackToDevice(track: MediaStreamTrack, outputDeviceId: string, elementId: string): object;
+export declare function routeTrackToDevice(tracks: MediaStreamTrack[], volumes: number[], outputDeviceId: string, elementId: string): object;
 /**
  * Represents a version object with a version string and a label.
  *
