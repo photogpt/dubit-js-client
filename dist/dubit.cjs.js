@@ -872,10 +872,10 @@ var Translator = /** @class */function () {
           fromLang: _this.fromLang,
           toLang: _this.toLang
         });
+        _this.translatedTrack = event.track;
         if (_this.onTranslatedTrackCallback) {
           try {
             _this.onTranslatedTrackCallback(event.track);
-            _this.translatedTrack = event.track;
           } catch (callbackError) {
             _this._log(DubitLogEvents.INTERNAL_ERROR, {
               handler: 'onTranslatedTrackCallback'
@@ -883,10 +883,10 @@ var Translator = /** @class */function () {
           }
         }
       } else if (event.track.kind === 'audio' && event.participant.local) {
+        _this.userTrack = event.track;
         if (_this.onUserTrackCallback) {
           try {
             _this.onUserTrackCallback(event.track);
-            _this.userTrack = event.track;
           } catch (callbackError) {
             _this._log(DubitLogEvents.INTERNAL_ERROR, {
               handler: 'onUserTrackCallback'
@@ -1002,6 +1002,11 @@ var Translator = /** @class */function () {
             if (this.inputAudioTrack && this.inputAudioTrack.readyState === 'live') {
               audioSource = this.inputAudioTrack;
             }
+            this.callObject.on('track-started', this.handleTrackStarted);
+            this.callObject.on('participant-joined', this.handleParticipantJoined);
+            this.callObject.on('app-message', this.handleAppMessage);
+            this.callObject.on('participant-left', this.handleParticipantLeft);
+            this.callObject.on('network-quality-change', this.handleNetworkQualityChange);
             _f.label = 1;
           case 1:
             _f.trys.push([1, 3,, 5]);
@@ -1085,11 +1090,6 @@ var Translator = /** @class */function () {
             this.callObject = null;
             throw error_7;
           case 16:
-            this.callObject.on('track-started', this.handleTrackStarted);
-            this.callObject.on('participant-joined', this.handleParticipantJoined);
-            this.callObject.on('app-message', this.handleAppMessage);
-            this.callObject.on('participant-left', this.handleParticipantLeft);
-            this.callObject.on('network-quality-change', this.handleNetworkQualityChange);
             this._log(DubitLogEvents.TRANSLATOR_INIT_COMPLETE, {
               fromLang: this.fromLang,
               toLang: this.toLang,

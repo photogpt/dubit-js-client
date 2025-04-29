@@ -593,11 +593,19 @@ export class Translator {
     if (this.inputAudioTrack && this.inputAudioTrack.readyState === 'live') {
       audioSource = this.inputAudioTrack
     }
+
+    this.callObject.on('track-started', this.handleTrackStarted)
+    this.callObject.on('participant-joined', this.handleParticipantJoined)
+    this.callObject.on('app-message', this.handleAppMessage)
+    this.callObject.on('participant-left', this.handleParticipantLeft)
+    this.callObject.on('network-quality-change', this.handleNetworkQualityChange)
+
     try {
       this._log(DubitLogEvents.TRANSLATOR_JOINING_ROOM, {
         roomUrl: this.roomUrl,
         hasAudioSource: !!audioSource,
       })
+
       await this.callObject.join({
         url: this.roomUrl,
         audioSource,
@@ -662,11 +670,6 @@ export class Translator {
       throw error
     }
 
-    this.callObject.on('track-started', this.handleTrackStarted)
-    this.callObject.on('participant-joined', this.handleParticipantJoined)
-    this.callObject.on('app-message', this.handleAppMessage)
-    this.callObject.on('participant-left', this.handleParticipantLeft)
-    this.callObject.on('network-quality-change', this.handleNetworkQualityChange)
 
     this._log(DubitLogEvents.TRANSLATOR_INIT_COMPLETE, {
       fromLang: this.fromLang,
@@ -682,6 +685,7 @@ export class Translator {
       event.track.kind === 'audio' &&
       !event?.participant?.local &&
       checkWord(event.participant.user_name, this._getTranslatorLabel())
+
     if (isValidTranslatorTrack) {
       this._log(
         DubitLogEvents.TRANSLATOR_TRACK_READY,
@@ -692,11 +696,10 @@ export class Translator {
         undefined,
         { fromLang: this.fromLang, toLang: this.toLang },
       )
-
+      this.translatedTrack = event.track;
       if (this.onTranslatedTrackCallback) {
         try {
           this.onTranslatedTrackCallback(event.track)
-          this.translatedTrack = event.track
         } catch (callbackError: any) {
           this._log(
             DubitLogEvents.INTERNAL_ERROR,
@@ -708,10 +711,10 @@ export class Translator {
     }
 
     else if (event.track.kind === 'audio' && event.participant.local) {
+      this.userTrack = event.track;
       if (this.onUserTrackCallback) {
         try {
           this.onUserTrackCallback(event.track)
-          this.userTrack = event.track
         } catch (callbackError: any) {
           this._log(
             DubitLogEvents.INTERNAL_ERROR,
@@ -1124,7 +1127,7 @@ export function routeTrackToDevice(
   tracks: MediaStreamTrack[],
   volumes: number[],  
   outputDeviceId: string,
-  elementId: string,
+  elementId?: string,
 ): object {
 
   if (tracks.length !== volumes.length) {
