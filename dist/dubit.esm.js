@@ -16,6 +16,20 @@ PERFORMANCE OF THIS SOFTWARE.
 ***************************************************************************** */
 /* global Reflect, Promise, SuppressedError, Symbol, Iterator */
 
+var extendStatics = function(d, b) {
+    extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+    return extendStatics(d, b);
+};
+
+function __extends(d, b) {
+    if (typeof b !== "function" && b !== null)
+        throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+}
 
 var __assign = function() {
     __assign = Object.assign || function __assign(t) {
@@ -70,6 +84,360 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
     var e = new Error(message);
     return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
 };
+
+function getDefaultExportFromCjs (x) {
+	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
+}
+
+var eventemitter3 = {exports: {}};
+
+var hasRequiredEventemitter3;
+
+function requireEventemitter3 () {
+	if (hasRequiredEventemitter3) return eventemitter3.exports;
+	hasRequiredEventemitter3 = 1;
+	(function (module) {
+
+		var has = Object.prototype.hasOwnProperty
+		  , prefix = '~';
+
+		/**
+		 * Constructor to create a storage for our `EE` objects.
+		 * An `Events` instance is a plain object whose properties are event names.
+		 *
+		 * @constructor
+		 * @private
+		 */
+		function Events() {}
+
+		//
+		// We try to not inherit from `Object.prototype`. In some engines creating an
+		// instance in this way is faster than calling `Object.create(null)` directly.
+		// If `Object.create(null)` is not supported we prefix the event names with a
+		// character to make sure that the built-in object properties are not
+		// overridden or used as an attack vector.
+		//
+		if (Object.create) {
+		  Events.prototype = Object.create(null);
+
+		  //
+		  // This hack is needed because the `__proto__` property is still inherited in
+		  // some old browsers like Android 4, iPhone 5.1, Opera 11 and Safari 5.
+		  //
+		  if (!new Events().__proto__) prefix = false;
+		}
+
+		/**
+		 * Representation of a single event listener.
+		 *
+		 * @param {Function} fn The listener function.
+		 * @param {*} context The context to invoke the listener with.
+		 * @param {Boolean} [once=false] Specify if the listener is a one-time listener.
+		 * @constructor
+		 * @private
+		 */
+		function EE(fn, context, once) {
+		  this.fn = fn;
+		  this.context = context;
+		  this.once = once || false;
+		}
+
+		/**
+		 * Add a listener for a given event.
+		 *
+		 * @param {EventEmitter} emitter Reference to the `EventEmitter` instance.
+		 * @param {(String|Symbol)} event The event name.
+		 * @param {Function} fn The listener function.
+		 * @param {*} context The context to invoke the listener with.
+		 * @param {Boolean} once Specify if the listener is a one-time listener.
+		 * @returns {EventEmitter}
+		 * @private
+		 */
+		function addListener(emitter, event, fn, context, once) {
+		  if (typeof fn !== 'function') {
+		    throw new TypeError('The listener must be a function');
+		  }
+
+		  var listener = new EE(fn, context || emitter, once)
+		    , evt = prefix ? prefix + event : event;
+
+		  if (!emitter._events[evt]) emitter._events[evt] = listener, emitter._eventsCount++;
+		  else if (!emitter._events[evt].fn) emitter._events[evt].push(listener);
+		  else emitter._events[evt] = [emitter._events[evt], listener];
+
+		  return emitter;
+		}
+
+		/**
+		 * Clear event by name.
+		 *
+		 * @param {EventEmitter} emitter Reference to the `EventEmitter` instance.
+		 * @param {(String|Symbol)} evt The Event name.
+		 * @private
+		 */
+		function clearEvent(emitter, evt) {
+		  if (--emitter._eventsCount === 0) emitter._events = new Events();
+		  else delete emitter._events[evt];
+		}
+
+		/**
+		 * Minimal `EventEmitter` interface that is molded against the Node.js
+		 * `EventEmitter` interface.
+		 *
+		 * @constructor
+		 * @public
+		 */
+		function EventEmitter() {
+		  this._events = new Events();
+		  this._eventsCount = 0;
+		}
+
+		/**
+		 * Return an array listing the events for which the emitter has registered
+		 * listeners.
+		 *
+		 * @returns {Array}
+		 * @public
+		 */
+		EventEmitter.prototype.eventNames = function eventNames() {
+		  var names = []
+		    , events
+		    , name;
+
+		  if (this._eventsCount === 0) return names;
+
+		  for (name in (events = this._events)) {
+		    if (has.call(events, name)) names.push(prefix ? name.slice(1) : name);
+		  }
+
+		  if (Object.getOwnPropertySymbols) {
+		    return names.concat(Object.getOwnPropertySymbols(events));
+		  }
+
+		  return names;
+		};
+
+		/**
+		 * Return the listeners registered for a given event.
+		 *
+		 * @param {(String|Symbol)} event The event name.
+		 * @returns {Array} The registered listeners.
+		 * @public
+		 */
+		EventEmitter.prototype.listeners = function listeners(event) {
+		  var evt = prefix ? prefix + event : event
+		    , handlers = this._events[evt];
+
+		  if (!handlers) return [];
+		  if (handlers.fn) return [handlers.fn];
+
+		  for (var i = 0, l = handlers.length, ee = new Array(l); i < l; i++) {
+		    ee[i] = handlers[i].fn;
+		  }
+
+		  return ee;
+		};
+
+		/**
+		 * Return the number of listeners listening to a given event.
+		 *
+		 * @param {(String|Symbol)} event The event name.
+		 * @returns {Number} The number of listeners.
+		 * @public
+		 */
+		EventEmitter.prototype.listenerCount = function listenerCount(event) {
+		  var evt = prefix ? prefix + event : event
+		    , listeners = this._events[evt];
+
+		  if (!listeners) return 0;
+		  if (listeners.fn) return 1;
+		  return listeners.length;
+		};
+
+		/**
+		 * Calls each of the listeners registered for a given event.
+		 *
+		 * @param {(String|Symbol)} event The event name.
+		 * @returns {Boolean} `true` if the event had listeners, else `false`.
+		 * @public
+		 */
+		EventEmitter.prototype.emit = function emit(event, a1, a2, a3, a4, a5) {
+		  var evt = prefix ? prefix + event : event;
+
+		  if (!this._events[evt]) return false;
+
+		  var listeners = this._events[evt]
+		    , len = arguments.length
+		    , args
+		    , i;
+
+		  if (listeners.fn) {
+		    if (listeners.once) this.removeListener(event, listeners.fn, undefined, true);
+
+		    switch (len) {
+		      case 1: return listeners.fn.call(listeners.context), true;
+		      case 2: return listeners.fn.call(listeners.context, a1), true;
+		      case 3: return listeners.fn.call(listeners.context, a1, a2), true;
+		      case 4: return listeners.fn.call(listeners.context, a1, a2, a3), true;
+		      case 5: return listeners.fn.call(listeners.context, a1, a2, a3, a4), true;
+		      case 6: return listeners.fn.call(listeners.context, a1, a2, a3, a4, a5), true;
+		    }
+
+		    for (i = 1, args = new Array(len -1); i < len; i++) {
+		      args[i - 1] = arguments[i];
+		    }
+
+		    listeners.fn.apply(listeners.context, args);
+		  } else {
+		    var length = listeners.length
+		      , j;
+
+		    for (i = 0; i < length; i++) {
+		      if (listeners[i].once) this.removeListener(event, listeners[i].fn, undefined, true);
+
+		      switch (len) {
+		        case 1: listeners[i].fn.call(listeners[i].context); break;
+		        case 2: listeners[i].fn.call(listeners[i].context, a1); break;
+		        case 3: listeners[i].fn.call(listeners[i].context, a1, a2); break;
+		        case 4: listeners[i].fn.call(listeners[i].context, a1, a2, a3); break;
+		        default:
+		          if (!args) for (j = 1, args = new Array(len -1); j < len; j++) {
+		            args[j - 1] = arguments[j];
+		          }
+
+		          listeners[i].fn.apply(listeners[i].context, args);
+		      }
+		    }
+		  }
+
+		  return true;
+		};
+
+		/**
+		 * Add a listener for a given event.
+		 *
+		 * @param {(String|Symbol)} event The event name.
+		 * @param {Function} fn The listener function.
+		 * @param {*} [context=this] The context to invoke the listener with.
+		 * @returns {EventEmitter} `this`.
+		 * @public
+		 */
+		EventEmitter.prototype.on = function on(event, fn, context) {
+		  return addListener(this, event, fn, context, false);
+		};
+
+		/**
+		 * Add a one-time listener for a given event.
+		 *
+		 * @param {(String|Symbol)} event The event name.
+		 * @param {Function} fn The listener function.
+		 * @param {*} [context=this] The context to invoke the listener with.
+		 * @returns {EventEmitter} `this`.
+		 * @public
+		 */
+		EventEmitter.prototype.once = function once(event, fn, context) {
+		  return addListener(this, event, fn, context, true);
+		};
+
+		/**
+		 * Remove the listeners of a given event.
+		 *
+		 * @param {(String|Symbol)} event The event name.
+		 * @param {Function} fn Only remove the listeners that match this function.
+		 * @param {*} context Only remove the listeners that have this context.
+		 * @param {Boolean} once Only remove one-time listeners.
+		 * @returns {EventEmitter} `this`.
+		 * @public
+		 */
+		EventEmitter.prototype.removeListener = function removeListener(event, fn, context, once) {
+		  var evt = prefix ? prefix + event : event;
+
+		  if (!this._events[evt]) return this;
+		  if (!fn) {
+		    clearEvent(this, evt);
+		    return this;
+		  }
+
+		  var listeners = this._events[evt];
+
+		  if (listeners.fn) {
+		    if (
+		      listeners.fn === fn &&
+		      (!once || listeners.once) &&
+		      (!context || listeners.context === context)
+		    ) {
+		      clearEvent(this, evt);
+		    }
+		  } else {
+		    for (var i = 0, events = [], length = listeners.length; i < length; i++) {
+		      if (
+		        listeners[i].fn !== fn ||
+		        (once && !listeners[i].once) ||
+		        (context && listeners[i].context !== context)
+		      ) {
+		        events.push(listeners[i]);
+		      }
+		    }
+
+		    //
+		    // Reset the array, or remove it completely if we have no more listeners.
+		    //
+		    if (events.length) this._events[evt] = events.length === 1 ? events[0] : events;
+		    else clearEvent(this, evt);
+		  }
+
+		  return this;
+		};
+
+		/**
+		 * Remove all listeners, or those of the specified event.
+		 *
+		 * @param {(String|Symbol)} [event] The event name.
+		 * @returns {EventEmitter} `this`.
+		 * @public
+		 */
+		EventEmitter.prototype.removeAllListeners = function removeAllListeners(event) {
+		  var evt;
+
+		  if (event) {
+		    evt = prefix ? prefix + event : event;
+		    if (this._events[evt]) clearEvent(this, evt);
+		  } else {
+		    this._events = new Events();
+		    this._eventsCount = 0;
+		  }
+
+		  return this;
+		};
+
+		//
+		// Alias methods names because people roll like that.
+		//
+		EventEmitter.prototype.off = EventEmitter.prototype.removeListener;
+		EventEmitter.prototype.addListener = EventEmitter.prototype.on;
+
+		//
+		// Expose the prefix.
+		//
+		EventEmitter.prefixed = prefix;
+
+		//
+		// Allow `EventEmitter` to be imported as module namespace.
+		//
+		EventEmitter.EventEmitter = EventEmitter;
+
+		//
+		// Expose the module.
+		//
+		{
+		  module.exports = EventEmitter;
+		} 
+	} (eventemitter3));
+	return eventemitter3.exports;
+}
+
+var eventemitter3Exports = requireEventemitter3();
+var EventEmitter = /*@__PURE__*/getDefaultExportFromCjs(eventemitter3Exports);
 
 var API_URL = 'https://test-api.dubit.live';
 function enhanceError(baseMessage, originalError) {
@@ -141,6 +509,66 @@ function logUserEvent(loggerCallback, eventDef, className, internalData, origina
         console.log.apply(console, logArgs);
     }
   }
+}
+// util functions 
+function checkWord(a, b) {
+  var bList = b.split(' ').filter(Boolean);
+  var found = bList.reduce(function (i, w) {
+    if (i == -1) return -1;
+    var index = a.indexOf(w, i);
+    return index == -1 ? -1 : index + w.length;
+  }, 0);
+  return found != -1;
+}
+var DubitEventEmitter = /** @class */function (_super) {
+  __extends(DubitEventEmitter, _super);
+  function DubitEventEmitter() {
+    return _super !== null && _super.apply(this, arguments) || this;
+  }
+  return DubitEventEmitter;
+}(EventEmitter);
+function listenEvents(url) {
+  return __awaiter(this, void 0, void 0, function () {
+    var emitter, callObj;
+    return __generator(this, function (_a) {
+      switch (_a.label) {
+        case 0:
+          emitter = new DubitEventEmitter();
+          callObj = Daily.createCallObject({
+            allowMultipleCallInstances: true,
+            videoSource: false,
+            subscribeToTracksAutomatically: false
+          });
+          callObj.startRemoteParticipantsAudioLevelObserver(100);
+          callObj.on('app-message', function (ev) {
+            return emitter.emit('app-message', ev);
+          });
+          callObj.on('participant-joined', function (ev) {
+            return emitter.emit('participant-joined', ev);
+          });
+          callObj.on('participant-left', function (ev) {
+            return emitter.emit('participant-left', ev);
+          });
+          callObj.on('remote-participants-audio-level', function (ev) {
+            return emitter.emit('remote-participants-audio-level', ev);
+          });
+          return [4 /*yield*/, callObj.join({
+            url: url,
+            audioSource: false,
+            videoSource: false,
+            subscribeToTracksAutomatically: true
+          })];
+        case 1:
+          _a.sent();
+          return [2 /*return*/, {
+            dubitEmitter: emitter,
+            leaveCall: function () {
+              callObj.leave();
+            }
+          }];
+      }
+    });
+  });
 }
 function createNewInstance(_a) {
   return __awaiter(this, arguments, void 0, function (_b) {
@@ -316,6 +744,9 @@ function validateTranslatorParams(params) {
   }).includes(params.version)) {
     return new Error("Unsupported version: ".concat(params.version, ". Supported versions: ").concat(SUPPORTED_TRANSLATOR_VERSIONS));
   }
+  if (params.fromLang.includes('ar') && params.version != '1' || params.toLang.includes('ar') && params.version != '1') {
+    return new Error("Arabic not supported in this version, Supported version: 1");
+  }
   return null;
 }
 var DubitInstance = /** @class */function () {
@@ -413,12 +844,14 @@ var Translator = /** @class */function () {
     this.translationBeep = false;
     this.hqVoices = false;
     this.callObject = null;
+    this.userTrack = null;
     this.translatedTrack = null;
     this.participantId = '';
     this.translatorParticipantId = '';
     // private participantTracks: Map<string, MediaStreamTrack> = new Map();
     this.outputDeviceId = null;
     this.loggerCallback = null;
+    this.onUserTrackCallback = null;
     this.onTranslatedTrackCallback = null;
     this.onCaptionsCallback = null;
     this.onNetworkQualityChangeCallback = null;
@@ -428,7 +861,7 @@ var Translator = /** @class */function () {
     this.handleTrackStarted = function (event) {
       var _a;
       // TODO: add better identifier like some kind of id in metadata or user_participant_id in translator name
-      var isValidTranslatorTrack = event.track && event.track.kind === 'audio' && !((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) && event.participant.user_name.includes(_this._getTranslatorLabel());
+      var isValidTranslatorTrack = event.track && event.track.kind === 'audio' && !((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) && checkWord(event.participant.user_name, _this._getTranslatorLabel());
       if (isValidTranslatorTrack) {
         _this._log(DubitLogEvents.TRANSLATOR_TRACK_READY, {
           participantName: event.participant.user_name,
@@ -437,14 +870,25 @@ var Translator = /** @class */function () {
           fromLang: _this.fromLang,
           toLang: _this.toLang
         });
+        _this.translatedTrack = event.track;
         if (_this.onTranslatedTrackCallback) {
           try {
             _this.onTranslatedTrackCallback(event.track);
-            _this.translatedTrack = event.track;
           } catch (callbackError) {
             _this._log(DubitLogEvents.INTERNAL_ERROR, {
               handler: 'onTranslatedTrackCallback'
             }, enhanceError('Error in onTranslatedTrackReady callback', callbackError));
+          }
+        }
+      } else if (event.track.kind === 'audio' && event.participant.local) {
+        _this.userTrack = event.track;
+        if (_this.onUserTrackCallback) {
+          try {
+            _this.onUserTrackCallback(event.track);
+          } catch (callbackError) {
+            _this._log(DubitLogEvents.INTERNAL_ERROR, {
+              handler: 'onUserTrackCallback'
+            }, enhanceError('Error in onUserTrackReady callback', callbackError));
           }
         }
       }
@@ -452,7 +896,7 @@ var Translator = /** @class */function () {
     this.handleParticipantJoined = function (event) {
       var _a, _b;
       if ((_a = event === null || event === void 0 ? void 0 : event.participant) === null || _a === void 0 ? void 0 : _a.local) return;
-      if (event.participant.user_name.includes(_this._getTranslatorLabel())) {
+      if (checkWord(event.participant.user_name, _this._getTranslatorLabel())) {
         _this.translatorParticipantId = event.participant.session_id;
         _this._log(DubitLogEvents.TRANSLATOR_PARTICIPANT_JOINED, {
           participantId: _this.translatorParticipantId,
@@ -483,7 +927,7 @@ var Translator = /** @class */function () {
       }
     };
     this.handleParticipantLeft = function (event) {
-      if (!event.participant.local && event.participant.user_name.includes(_this._getTranslatorLabel())) {
+      if (!event.participant.local && checkWord(event.participant.user_name, _this._getTranslatorLabel())) {
         _this._log(DubitLogEvents.TRANSLATOR_PARTICIPANT_LEFT, {
           participantId: event.participant.session_id,
           participantName: event.participant.user_name
@@ -529,7 +973,7 @@ var Translator = /** @class */function () {
     var toLangLabel = (_b = SUPPORTED_LANGUAGES.find(function (x) {
       return x.langCode == _this.toLang;
     })) === null || _b === void 0 ? void 0 : _b.label;
-    return "Translator ".concat(fromLangLabel, " -> ").concat(toLangLabel);
+    return "Translator ".concat(fromLangLabel, " -> ").concat(toLangLabel, " : ").concat(this.participantId);
   };
   Translator.prototype.init = function () {
     return __awaiter(this, void 0, void 0, function () {
@@ -556,6 +1000,11 @@ var Translator = /** @class */function () {
             if (this.inputAudioTrack && this.inputAudioTrack.readyState === 'live') {
               audioSource = this.inputAudioTrack;
             }
+            this.callObject.on('track-started', this.handleTrackStarted);
+            this.callObject.on('participant-joined', this.handleParticipantJoined);
+            this.callObject.on('app-message', this.handleAppMessage);
+            this.callObject.on('participant-left', this.handleParticipantLeft);
+            this.callObject.on('network-quality-change', this.handleNetworkQualityChange);
             _f.label = 1;
           case 1:
             _f.trys.push([1, 3,, 5]);
@@ -640,11 +1089,6 @@ var Translator = /** @class */function () {
             this.callObject = null;
             throw error_7;
           case 16:
-            this.callObject.on('track-started', this.handleTrackStarted);
-            this.callObject.on('participant-joined', this.handleParticipantJoined);
-            this.callObject.on('app-message', this.handleAppMessage);
-            this.callObject.on('participant-left', this.handleParticipantLeft);
-            this.callObject.on('network-quality-change', this.handleNetworkQualityChange);
             this._log(DubitLogEvents.TRANSLATOR_INIT_COMPLETE, {
               fromLang: this.fromLang,
               toLang: this.toLang,
@@ -790,6 +1234,24 @@ var Translator = /** @class */function () {
       });
     });
   };
+  Translator.prototype.onUserTrackReady = function (callback) {
+    if (typeof callback !== 'function') {
+      this._log(DubitLogEvents.INTERNAL_ERROR, {
+        reason: 'Invalid callback provided to onUserTrackReady'
+      });
+      return;
+    }
+    this.onUserTrackCallback = callback;
+    if (this.userTrack) {
+      try {
+        callback(this.userTrack);
+      } catch (callbackError) {
+        this._log(DubitLogEvents.INTERNAL_ERROR, {
+          handler: 'onUserTrackReadyImmediate'
+        }, enhanceError('Error in onUserTrackReady callback (immediate invoke)', callbackError));
+      }
+    }
+  };
   Translator.prototype.onTranslatedTrackReady = function (callback) {
     if (typeof callback !== 'function') {
       this._log(DubitLogEvents.INTERNAL_ERROR, {
@@ -906,6 +1368,9 @@ var Translator = /** @class */function () {
   Translator.prototype.getParticipantId = function () {
     return this.participantId;
   };
+  Translator.prototype.getTranslatorParticipantId = function () {
+    return this.translatorParticipantId;
+  };
   Translator.prototype.getTranslatedTrack = function () {
     return this.translatedTrack;
   };
@@ -923,6 +1388,26 @@ var Translator = /** @class */function () {
     }
     var remoteParticipantsAudioLevels = this.callObject.getRemoteParticipantsAudioLevel();
     return (_a = remoteParticipantsAudioLevels[this.translatorParticipantId]) !== null && _a !== void 0 ? _a : 0;
+  };
+  Translator.prototype.startRemoteParticipantsAudioLevelObserver = function () {
+    if (!this.callObject) {
+      var error = new Error('Translator not initialized (callObject is null)');
+      this._log(DubitLogEvents.INTERNAL_ERROR, {
+        reason: 'Not initialized'
+      }, error);
+      throw error;
+    }
+    this.callObject.startRemoteParticipantsAudioLevelObserver();
+  };
+  Translator.prototype.stopRemoteParticipantsAudioLevelObserver = function () {
+    if (!this.callObject) {
+      var error = new Error('Translator not initialized (callObject is null)');
+      this._log(DubitLogEvents.INTERNAL_ERROR, {
+        reason: 'Not initialized'
+      }, error);
+      throw error;
+    }
+    this.callObject.stopRemoteParticipantsAudioLevelObserver();
   };
   Translator.prototype.destroy = function () {
     return __awaiter(this, void 0, void 0, function () {
@@ -1000,10 +1485,14 @@ var activeRoutings = new Map();
  * Routes a WebRTC audio track to a specific output device using WebAudio
  * This implementation avoids the WebRTC track mixing issue by using the WebAudio API
  */
-function routeTrackToDevice(track, outputDeviceId, elementId) {
-  console.log("Routing track ".concat(track.id, " to device ").concat(outputDeviceId));
+function routeTrackToDevice(tracks, volumes, outputDeviceId, elementId) {
+  if (tracks.length !== volumes.length) {
+    throw new Error("`tracks` and `volumes` arrays must be the same length");
+  }
   if (!elementId) {
-    elementId = "audio-".concat(track.id);
+    elementId = "audio-".concat(tracks.map(function (t) {
+      return t.id;
+    }).join('-'));
   }
   // Clean up any existing routing for this element ID
   if (activeRoutings.has(elementId)) {
@@ -1030,12 +1519,33 @@ function routeTrackToDevice(track, outputDeviceId, elementId) {
       return console.error("Failed to resume AudioContext: ".concat(err));
     });
   }
-  var mediaStream = new MediaStream([track]);
-  var sourceNode = audioContext.createMediaStreamSource(mediaStream);
-  console.log("Created source node for track ".concat(track.id));
-  var destinationNode = audioContext.destination;
-  sourceNode.connect(destinationNode);
-  console.log("Connected track ".concat(track.id, " to destination for device ").concat(outputDeviceId));
+  var sourceNodes = [];
+  var gainNodes = [];
+  var pullElements = [];
+  tracks.forEach(function (track, i) {
+    var stream = new MediaStream([track]);
+    var source = audioContext.createMediaStreamSource(stream);
+    sourceNodes.push(source);
+    // c) Create & configure GainNode
+    var gainNode = audioContext.createGain();
+    gainNode.gain.value = volumes[i] / 100;
+    gainNodes.push(gainNode);
+    // d) Connect source → gain → destination
+    source.connect(gainNode).connect(audioContext.destination);
+    // e) Hidden <audio> to pull in WebRTC audio
+    var pullEl = document.createElement('audio');
+    pullEl.id = "pull-".concat(elementId, "-").concat(i);
+    pullEl.srcObject = stream;
+    pullEl.style.display = 'none';
+    pullEl.muted = true;
+    document.body.appendChild(pullEl);
+    pullElements.push(pullEl);
+    pullEl.play().then(function () {
+      return console.log("Pull element started for track ".concat(track.id));
+    }).catch(function (err) {
+      return console.error("Failed to start pull element: ".concat(err));
+    });
+  });
   // If the AudioContext API supports setSinkId directly, use it
   if ('setSinkId' in AudioContext.prototype) {
     audioContext //@ts-ignore
@@ -1045,36 +1555,26 @@ function routeTrackToDevice(track, outputDeviceId, elementId) {
       return console.error("Failed to set sinkId on AudioContext: ".concat(err));
     });
   }
-  // Create a hidden audio element that will pull from the WebRTC stream
-  // This is necessary to get the WebRTC subsystem to deliver the audio to WebAudio
-  var pullElement = document.createElement('audio');
-  pullElement.id = "pull-".concat(elementId);
-  pullElement.srcObject = mediaStream;
-  pullElement.style.display = 'none';
-  pullElement.muted = true; // Don't actually play through the default device
-  document.body.appendChild(pullElement);
-  // Start pulling audio through the element
-  pullElement.play().then(function () {
-    return console.log("Pull element started for track ".concat(track.id));
-  }).catch(function (err) {
-    return console.error("Failed to start pull element: ".concat(err));
-  });
-  // Create routing info object with stop method
   var routingInfo = {
     context: audioContext,
-    sourceNode: sourceNode,
-    pullElement: pullElement,
+    sourceNodes: sourceNodes,
+    gainNodes: gainNodes,
+    pullElements: pullElements,
     stop: function () {
-      this.sourceNode.disconnect();
-      this.pullElement.pause();
-      this.pullElement.srcObject = null;
-      if (this.pullElement.parentNode) {
-        document.body.removeChild(this.pullElement);
-      }
-      console.log("Stopped routing track ".concat(track.id, " to device ").concat(outputDeviceId));
+      var _this = this;
+      // disconnect & remove elements
+      this.sourceNodes.forEach(function (src, idx) {
+        src.disconnect();
+        var el = _this.pullElements[idx];
+        el.pause();
+        el.srcObject = null;
+        if (el.parentNode) {
+          el.parentNode.removeChild(el);
+        }
+      });
+      console.log("Stopped routing ".concat(tracks.length, " tracks to device ").concat(outputDeviceId));
     }
   };
-  // Store the routing for future cleanup
   activeRoutings.set(elementId, routingInfo);
   return routingInfo;
 }
@@ -1101,149 +1601,197 @@ var SUPPORTED_TRANSLATOR_VERSIONS = [{
   version: '3'
 }];
 var SUPPORTED_LANGUAGES = [{
-  langCode: 'multi',
-  label: 'Multilingual'
+  label: 'Multilingual (Spanish + English)',
+  langCode: 'multi'
 }, {
-  langCode: 'bg',
-  label: 'Bulgarian'
+  label: 'Bulgarian',
+  langCode: 'bg'
 }, {
-  langCode: 'ca',
-  label: 'Catalan'
+  label: 'Catalan',
+  langCode: 'ca'
 }, {
-  langCode: 'zh-CN',
-  label: 'Chinese (Mainland China)'
+  label: 'Chinese (China)',
+  langCode: 'zh-CN'
 }, {
-  langCode: 'zh-TW',
-  label: 'Chinese (Taiwan)'
+  label: 'Chinese (Taiwan)',
+  langCode: 'zh-TW'
 }, {
-  langCode: 'zh-HK',
-  label: 'Chinese (Traditional, Hong Kong)'
+  label: 'Chinese (Hong Kong SAR China)',
+  langCode: 'zh-HK'
 }, {
-  langCode: 'cs',
-  label: 'Czech'
+  label: 'Czech',
+  langCode: 'cs'
 }, {
-  langCode: 'da',
-  label: 'Danish'
+  label: 'Danish',
+  langCode: 'da'
 }, {
-  langCode: 'da-DK',
-  label: 'Danish'
+  label: 'Danish (Denmark)',
+  langCode: 'da-DK'
 }, {
-  langCode: 'nl',
-  label: 'Dutch'
+  label: 'Dutch',
+  langCode: 'nl'
 }, {
-  langCode: 'en',
-  label: 'English'
+  label: 'Dutch (Belgium)',
+  langCode: 'nl-BE'
 }, {
-  langCode: 'en-US',
-  label: 'English (United States)'
+  label: 'English',
+  langCode: 'en'
 }, {
-  langCode: 'en-AU',
-  label: 'English (Australia)'
+  label: 'English (United States)',
+  langCode: 'en-US'
 }, {
-  langCode: 'en-GB',
-  label: 'English (United Kingdom)'
+  label: 'English (Australia)',
+  langCode: 'en-AU'
 }, {
-  langCode: 'en-NZ',
-  label: 'English (New Zealand)'
+  label: 'English (United Kingdom)',
+  langCode: 'en-GB'
 }, {
-  langCode: 'en-IN',
-  label: 'English (India)'
+  label: 'English (New Zealand)',
+  langCode: 'en-NZ'
 }, {
-  langCode: 'et',
-  label: 'Estonian'
+  label: 'English (India)',
+  langCode: 'en-IN'
 }, {
-  langCode: 'fi',
-  label: 'Finnish'
+  label: 'Estonian',
+  langCode: 'et'
 }, {
-  langCode: 'nl-BE',
-  label: 'Flemish'
+  label: 'Finnish',
+  langCode: 'fi'
 }, {
-  langCode: 'fr',
-  label: 'French'
+  label: 'French',
+  langCode: 'fr'
 }, {
-  langCode: 'fr-CA',
-  label: 'French (Canada)'
+  label: 'French (Canada)',
+  langCode: 'fr-CA'
 }, {
-  langCode: 'de',
-  label: 'German'
+  label: 'German',
+  langCode: 'de'
 }, {
-  langCode: 'de-CH',
-  label: 'German (Switzerland)'
+  label: 'German (Switzerland)',
+  langCode: 'de-CH'
 }, {
-  langCode: 'el',
-  label: 'Greek'
+  label: 'Greek',
+  langCode: 'el'
 }, {
-  langCode: 'hi',
-  label: 'Hindi'
+  label: 'Hindi',
+  langCode: 'hi'
 }, {
-  langCode: 'hu',
-  label: 'Hungarian'
+  label: 'Hungarian',
+  langCode: 'hu'
 }, {
-  langCode: 'id',
-  label: 'Indonesian'
+  label: 'Indonesian',
+  langCode: 'id'
 }, {
-  langCode: 'it',
-  label: 'Italian'
+  label: 'Italian',
+  langCode: 'it'
 }, {
-  langCode: 'ja',
-  label: 'Japanese'
+  label: 'Japanese',
+  langCode: 'ja'
 }, {
-  langCode: 'ko-KR',
-  label: 'Korean'
+  label: 'Korean (South Korea)',
+  langCode: 'ko-KR'
 }, {
-  langCode: 'lv',
-  label: 'Latvian'
+  label: 'Latvian',
+  langCode: 'lv'
 }, {
-  langCode: 'lt',
-  label: 'Lithuanian'
+  label: 'Lithuanian',
+  langCode: 'lt'
 }, {
-  langCode: 'ms',
-  label: 'Malay'
+  label: 'Malay',
+  langCode: 'ms'
 }, {
-  langCode: 'no',
-  label: 'Norwegian'
+  label: 'Norwegian',
+  langCode: 'no'
 }, {
-  langCode: 'pl',
-  label: 'Polish'
+  label: 'Polish',
+  langCode: 'pl'
 }, {
-  langCode: 'pt',
-  label: 'Portuguese'
+  label: 'Portuguese',
+  langCode: 'pt'
 }, {
-  langCode: 'pt-BR',
-  label: 'Portuguese (Brazil)'
+  label: 'Portuguese (Brazil)',
+  langCode: 'pt-BR'
 }, {
-  langCode: 'pt-PT',
-  label: 'Portuguese (Portugal)'
+  label: 'Portuguese (Portugal)',
+  langCode: 'pt-PT'
 }, {
-  langCode: 'ro',
-  label: 'Romanian'
+  label: 'Romanian',
+  langCode: 'ro'
 }, {
-  langCode: 'ru',
-  label: 'Russian'
+  label: 'Russian',
+  langCode: 'ru'
 }, {
-  langCode: 'sk',
-  label: 'Slovak'
+  label: 'Slovak',
+  langCode: 'sk'
 }, {
-  langCode: 'es',
-  label: 'Spanish'
+  label: 'Spanish',
+  langCode: 'es'
 }, {
-  langCode: 'es-419',
-  label: 'Spanish (Latin America & Caribbean)'
+  label: 'Spanish (Latin America)',
+  langCode: 'es-419'
 }, {
-  langCode: 'sv-SE',
-  label: 'Swedish (Sweden)'
+  label: 'Swedish (Sweden)',
+  langCode: 'sv-SE'
 }, {
-  langCode: 'th-TH',
-  label: 'Thai (Thailand)'
+  label: 'Thai (Thailand)',
+  langCode: 'th-TH'
 }, {
-  langCode: 'tr',
-  label: 'Turkish'
+  label: 'Turkish',
+  langCode: 'tr'
 }, {
-  langCode: 'uk',
-  label: 'Ukrainian'
+  label: 'Ukrainian',
+  langCode: 'uk'
 }, {
-  langCode: 'vi',
-  label: 'Vietnamese'
+  label: 'Vietnamese',
+  langCode: 'vi'
+}, {
+  label: 'Arabic (United Arab Emirates)',
+  langCode: 'ar-AE'
+}, {
+  label: 'Arabic (Bahrain)',
+  langCode: 'ar-BH'
+}, {
+  label: 'Arabic (Algeria)',
+  langCode: 'ar-DZ'
+}, {
+  label: 'Arabic (Egypt)',
+  langCode: 'ar-EG'
+}, {
+  label: 'Arabic (Iraq)',
+  langCode: 'ar-IQ'
+}, {
+  label: 'Arabic (Jordan)',
+  langCode: 'ar-JO'
+}, {
+  label: 'Arabic (Kuwait)',
+  langCode: 'ar-KW'
+}, {
+  label: 'Arabic (Lebanon)',
+  langCode: 'ar-LB'
+}, {
+  label: 'Arabic (Libya)',
+  langCode: 'ar-LY'
+}, {
+  label: 'Arabic (Morocco)',
+  langCode: 'ar-MA'
+}, {
+  label: 'Arabic (Oman)',
+  langCode: 'ar-OM'
+}, {
+  label: 'Arabic (Qatar)',
+  langCode: 'ar-QA'
+}, {
+  label: 'Arabic (Saudi Arabia)',
+  langCode: 'ar-SA'
+}, {
+  label: 'Arabic (Syria)',
+  langCode: 'ar-SY'
+}, {
+  label: 'Arabic (Tunisia)',
+  langCode: 'ar-TN'
+}, {
+  label: 'Arabic (Yemen)',
+  langCode: 'ar-YE'
 }];
 var DubitLogEvents = {
   // Instance Lifecycle
@@ -1414,4 +1962,4 @@ var DubitLogEvents = {
   }
 };
 
-export { DubitInstance, DubitLogEvents, SUPPORTED_LANGUAGES, SUPPORTED_TRANSLATOR_VERSIONS, Translator, createNewInstance, getCompleteTranscript, getSupportedLanguages, routeTrackToDevice, validateApiKey };
+export { DubitEventEmitter, DubitInstance, DubitLogEvents, SUPPORTED_LANGUAGES, SUPPORTED_TRANSLATOR_VERSIONS, Translator, createNewInstance, getCompleteTranscript, getSupportedLanguages, listenEvents, routeTrackToDevice, validateApiKey };
