@@ -482,8 +482,8 @@ export class DubitInstance {
   }
 
   public getRoomId(): string {
-    const parts = this.roomUrl.split('/');
-    return parts[parts.length - 1] || '';
+    const parts = this.roomUrl.split('/')
+    return parts[parts.length - 1] || ''
   }
 }
 
@@ -607,6 +607,7 @@ export class Translator {
       })
 
       await this.callObject.join({
+        userName: this.metadata['userName'] || 'Dubit User',
         url: this.roomUrl,
         audioSource,
         videoSource: false,
@@ -729,6 +730,7 @@ export class Translator {
   private handleParticipantJoined = (event: DailyEventObjectParticipant) => {
     if (event?.participant?.local) return
 
+
     if (checkWord(event.participant.user_name, this._getTranslatorLabel())) {
       this.translatorParticipantId = event.participant.session_id;
       this._log(DubitLogEvents.TRANSLATOR_PARTICIPANT_JOINED, {
@@ -795,7 +797,7 @@ export class Translator {
       if (!response.ok) {
         try {
           errorData = await response.json()
-        } catch { }
+        } catch {}
         const errorMessage =
           errorData?.message || `Failed API call to register participant (HTTP ${response.status})`
         const error = new Error(errorMessage)
@@ -857,7 +859,7 @@ export class Translator {
       if (!response.ok) {
         try {
           errorData = await response.json()
-        } catch { }
+        } catch {}
         const errorMessage =
           errorData?.message ||
           `Failed API call to request translator service (HTTP ${response.status})`
@@ -1026,12 +1028,11 @@ export class Translator {
 
   public getTranslatorVolumeLevel(): number {
     if (!this.translatorParticipantId) {
-      return 0;
+      return 0
     }
 
     const remoteParticipantsAudioLevels = this.callObject.getRemoteParticipantsAudioLevel();
-    return remoteParticipantsAudioLevels[this.translatorParticipantId] ?? 0;
-
+    return remoteParticipantsAudioLevels[this.translatorParticipantId] ?? 0
   }
 
   public startRemoteParticipantsAudioLevelObserver() {
@@ -1112,8 +1113,6 @@ export class Translator {
       participantId,
     })
   }
-
-
 }
 
 const audioContexts = new Map()
@@ -1351,7 +1350,6 @@ export const SUPPORTED_LANGUAGES: LanguageType[] = [
   { label: 'Arabic (Tunisia)', langCode: 'ar-TN' },
   { label: 'Arabic (Yemen)', langCode: 'ar-YE' }
 ];
-
 
 export const DubitLogEvents = {
   // Instance Lifecycle

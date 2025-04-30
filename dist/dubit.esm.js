@@ -1013,6 +1013,7 @@ var Translator = /** @class */function () {
               hasAudioSource: !!audioSource
             });
             return [4 /*yield*/, this.callObject.join({
+              userName: this.metadata['userName'] || 'Dubit User',
               url: this.roomUrl,
               audioSource: audioSource,
               videoSource: false,
