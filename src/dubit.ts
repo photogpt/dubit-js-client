@@ -600,6 +600,8 @@ export class Translator {
     this.callObject.on('participant-left', this.handleParticipantLeft)
     this.callObject.on('network-quality-change', this.handleNetworkQualityChange)
 
+    const userName = this.metadata['userName'] || 'Dubit User'
+
     try {
       this._log(DubitLogEvents.TRANSLATOR_JOINING_ROOM, {
         roomUrl: this.roomUrl,
@@ -607,7 +609,7 @@ export class Translator {
       })
 
       await this.callObject.join({
-        userName: this.metadata['userName'] || 'Dubit User',
+        userName: userName,
         url: this.roomUrl,
         audioSource,
         videoSource: false,
@@ -635,7 +637,7 @@ export class Translator {
       this._log(DubitLogEvents.TRANSLATOR_REGISTERING, {
         participantId: this.participantId,
       })
-      await this.registerParticipant(this.participantId)
+      await this.registerParticipant(this.participantId, userName)
     } catch (error: any) {
       await this.callObject?.leave()
       await this.callObject?.destroy()
@@ -782,7 +784,7 @@ export class Translator {
     this.onNetworkQualityChangeCallback?.(event as NetworkStats)
   }
 
-  private async registerParticipant(participantId: string): Promise<void> {
+  private async registerParticipant(participantId: string, participantName?: string): Promise<void> {
     try {
       const response = await fetch(`${this.apiUrl}/participant`, {
         method: 'POST',
@@ -790,7 +792,7 @@ export class Translator {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.token}`,
         },
-        body: JSON.stringify({ id: participantId }),
+        body: JSON.stringify({ id: participantId, participant_name: participantName }),
       })
 
       let errorData: any = null

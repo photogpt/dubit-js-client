@@ -979,7 +979,7 @@ var Translator = /** @class */function () {
   };
   Translator.prototype.init = function () {
     return __awaiter(this, void 0, void 0, function () {
-      var enhancedError, audioSource, error_5, enhancedError, participants, error_6, messageParams, error_7;
+      var enhancedError, audioSource, userName, error_5, enhancedError, participants, error_6, messageParams, error_7;
       var _a, _b, _c, _d, _e;
       return __generator(this, function (_f) {
         switch (_f.label) {
@@ -1007,6 +1007,7 @@ var Translator = /** @class */function () {
             this.callObject.on('app-message', this.handleAppMessage);
             this.callObject.on('participant-left', this.handleParticipantLeft);
             this.callObject.on('network-quality-change', this.handleNetworkQualityChange);
+            userName = this.metadata['userName'] || 'Dubit User';
             _f.label = 1;
           case 1:
             _f.trys.push([1, 3,, 5]);
@@ -1015,7 +1016,7 @@ var Translator = /** @class */function () {
               hasAudioSource: !!audioSource
             });
             return [4 /*yield*/, this.callObject.join({
-              userName: this.metadata['userName'] || 'Dubit User',
+              userName: userName,
               url: this.roomUrl,
               audioSource: audioSource,
               videoSource: false,
@@ -1053,7 +1054,7 @@ var Translator = /** @class */function () {
             this._log(DubitLogEvents.TRANSLATOR_REGISTERING, {
               participantId: this.participantId
             });
-            return [4 /*yield*/, this.registerParticipant(this.participantId)];
+            return [4 /*yield*/, this.registerParticipant(this.participantId, userName)];
           case 7:
             _f.sent();
             return [3 /*break*/, 11];
@@ -1101,7 +1102,7 @@ var Translator = /** @class */function () {
       });
     });
   };
-  Translator.prototype.registerParticipant = function (participantId) {
+  Translator.prototype.registerParticipant = function (participantId, participantName) {
     return __awaiter(this, void 0, void 0, function () {
       var response, errorData, errorMessage, error, enhancedError, error_8, enhancedError;
       return __generator(this, function (_b) {
@@ -1115,7 +1116,8 @@ var Translator = /** @class */function () {
                 Authorization: "Bearer ".concat(this.token)
               },
               body: JSON.stringify({
-                id: participantId
+                id: participantId,
+                participant_name: participantName
               })
             })];
           case 1:
