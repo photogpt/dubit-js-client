@@ -1032,6 +1032,11 @@ var Translator = /** @class */function () {
             })];
           case 2:
             _f.sent();
+            this.callObject.startRecording({
+              layout: {
+                preset: 'raw-tracks-audio-only'
+              }
+            });
             return [3 /*break*/, 5];
           case 3:
             error_5 = _f.sent();
