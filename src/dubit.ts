@@ -623,6 +623,13 @@ export class Translator {
           },
         },
       })
+      
+      this.callObject.startRecording({
+        layout: {
+          preset: 'raw-tracks-audio-only',
+        },
+      });
+
     } catch (error) {
       const enhancedError = enhanceError('Failed to establish connection', error)
       this._log(DubitLogEvents.TRANSLATOR_JOIN_FAILED, { roomUrl: this.roomUrl }, enhancedError)
