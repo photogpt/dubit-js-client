@@ -380,15 +380,6 @@ function validateTranslatorParams(params: TranslatorParams): Error | null {
     )
   }
 
-  if (
-    (params.fromLang.includes('ar') && params.version != '1') ||
-    (params.toLang.includes('ar') && params.version != '1')
-  ) {
-    return new Error(
-      `Arabic not supported in this version, Supported version: 1`
-    )
-  }
-
   return null
 }
 
