@@ -5,6 +5,8 @@ export type CaptionEvent = {
     timestamp: string;
     transcript: string;
     type: string;
+    from_lang: string;
+    to_lang: string;
 };
 /**
  * For now, only API_KEY is supported as a token.

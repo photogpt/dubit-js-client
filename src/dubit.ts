@@ -17,6 +17,8 @@ export type CaptionEvent = {
   timestamp: string
   transcript: string
   type: string
+  from_lang: string
+  to_lang: string
 }
 
 /**
