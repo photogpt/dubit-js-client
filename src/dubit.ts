@@ -44,6 +44,7 @@ export type TranslatorParams = {
   inputAudioTrack: MediaStreamTrack | null
   metadata?: Record<string, any>
   outputDeviceId?: string
+  enable_recording: boolean,
   onTranslatedTrackReady?: (track: MediaStreamTrack) => void
   onCaptions?: (caption: CaptionEvent) => void
   onNetworkQualityChange?: (stats: NetworkStats) => void
@@ -494,6 +495,7 @@ export class Translator {
   private hqVoices: boolean = false
   private inputAudioTrack: MediaStreamTrack | null
   private metadata?: Record<string, any>
+  private enable_recording: boolean
 
   private callObject: DailyCall | null = null
   private userTrack: MediaStreamTrack | null = null
@@ -535,6 +537,7 @@ export class Translator {
     this.inputAudioTrack = params.inputAudioTrack
     this.metadata = params.metadata ? safeSerializeMetadata(params.metadata) : {}
     this.outputDeviceId = params.outputDeviceId
+    this.enable_recording = params.enable_recording || false;
     this.loggerCallback = params.loggerCallback || null
     if (params.onTranslatedTrackReady)
       this.onTranslatedTrackCallback = params.onTranslatedTrackReady
@@ -617,11 +620,13 @@ export class Translator {
         },
       })
       
-      this.callObject.startRecording({
-        layout: {
-          preset: 'raw-tracks-audio-only',
-        },
-      });
+      if(this.enable_recording) {
+        this.callObject.startRecording({
+          layout: {
+            preset: 'raw-tracks-audio-only',
+          },
+        });
+      }
 
     } catch (error) {
       const enhancedError = enhanceError('Failed to establish connection', error)

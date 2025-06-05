@@ -954,6 +954,7 @@ var Translator = /** @class */function () {
     this.inputAudioTrack = params.inputAudioTrack;
     this.metadata = params.metadata ? safeSerializeMetadata(params.metadata) : {};
     this.outputDeviceId = params.outputDeviceId;
+    this.enable_recording = params.enable_recording || false;
     this.loggerCallback = params.loggerCallback || null;
     if (params.onTranslatedTrackReady) this.onTranslatedTrackCallback = params.onTranslatedTrackReady;
     if (params.onCaptions) this.onCaptionsCallback = params.onCaptions;
@@ -1029,11 +1030,13 @@ var Translator = /** @class */function () {
             })];
           case 2:
             _f.sent();
-            this.callObject.startRecording({
-              layout: {
-                preset: 'raw-tracks-audio-only'
-              }
-            });
+            if (this.enable_recording) {
+              this.callObject.startRecording({
+                layout: {
+                  preset: 'raw-tracks-audio-only'
+                }
+              });
+            }
             return [3 /*break*/, 5];
           case 3:
             error_5 = _f.sent();

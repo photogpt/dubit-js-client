@@ -29,6 +29,7 @@ export type TranslatorParams = {
     inputAudioTrack: MediaStreamTrack | null;
     metadata?: Record<string, any>;
     outputDeviceId?: string;
+    enable_recording: boolean;
     onTranslatedTrackReady?: (track: MediaStreamTrack) => void;
     onCaptions?: (caption: CaptionEvent) => void;
     onNetworkQualityChange?: (stats: NetworkStats) => void;
@@ -100,6 +101,7 @@ export declare class Translator {
     private hqVoices;
     private inputAudioTrack;
     private metadata?;
+    private enable_recording;
     private callObject;
     private userTrack;
     private translatedTrack;
