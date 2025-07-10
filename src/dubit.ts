@@ -3,16 +3,22 @@ import Daily, {
   DailyEventObjectAppMessage,
   DailyEventObjectParticipant,
   DailyEventObjectParticipantLeft,
+  DailyEventObjectRemoteParticipantsAudioLevel,
   DailyEventObjectTrack,
   DailyNetworkStats,
   DailyParticipantsObject,
 } from '@daily-co/daily-js'
+
+import EventEmitter from 'eventemitter3';
+
 
 export type CaptionEvent = {
   participant_id: string
   timestamp: string
   transcript: string
   type: string
+  from_lang: string
+  to_lang: string
 }
 
 /**
@@ -38,6 +44,7 @@ export type TranslatorParams = {
   inputAudioTrack: MediaStreamTrack | null
   metadata?: Record<string, any>
   outputDeviceId?: string
+  enable_recording: boolean,
   onTranslatedTrackReady?: (track: MediaStreamTrack) => void
   onCaptions?: (caption: CaptionEvent) => void
   onNetworkQualityChange?: (stats: NetworkStats) => void
@@ -151,6 +158,73 @@ function logUserEvent(
     }
   }
 }
+
+
+
+// util functions 
+
+function checkWord(a: string, b: string): boolean {
+
+  const bList = b.split(' ').filter(Boolean);
+
+  const found = bList.reduce((i, w) => {
+    if (i == -1) return -1;
+    const index = a.indexOf(w, i);
+    return index == -1 ? -1 : index + w.length;
+  }, 0);
+
+  return found != -1;
+
+}
+
+
+interface DubitEventTypes {
+  'app-message': (e: DailyEventObjectAppMessage) => void;
+  'participant-joined': (e: DailyEventObjectParticipant) => void;
+  'participant-left': (e: DailyEventObjectParticipantLeft) => void;
+  'remote-participants-audio-level': (e: DailyEventObjectRemoteParticipantsAudioLevel) => void;
+}
+
+
+export class DubitEventEmitter extends EventEmitter<DubitEventTypes> { }
+
+export async function listenEvents(url: string): Promise<{
+  dubitEmitter: DubitEventEmitter,
+  leaveCall: () => void
+}> {
+  const emitter = new DubitEventEmitter();
+
+  const callObj = Daily.createCallObject({
+    allowMultipleCallInstances: true,
+    videoSource: false,
+    subscribeToTracksAutomatically: false,
+  });
+
+
+  callObj.startRemoteParticipantsAudioLevelObserver(100);
+
+
+  callObj.on('app-message', (ev) => emitter.emit('app-message', ev));
+  callObj.on('participant-joined', (ev) => emitter.emit('participant-joined', ev));
+  callObj.on('participant-left', (ev) => emitter.emit('participant-left', ev));
+  callObj.on('remote-participants-audio-level', (ev) => emitter.emit('remote-participants-audio-level', ev));
+
+
+  await callObj.join({
+    url,
+    audioSource: false,
+    videoSource: false,
+    subscribeToTracksAutomatically: true,
+  });
+
+  return {
+    dubitEmitter: emitter,
+    leaveCall: () => { callObj.leave() }
+
+  }
+}
+
+
 
 export async function createNewInstance({
   token,
@@ -308,6 +382,7 @@ function validateTranslatorParams(params: TranslatorParams): Error | null {
       `Unsupported version: ${params.version}. Supported versions: ${SUPPORTED_TRANSLATOR_VERSIONS}`,
     )
   }
+
   return null
 }
 
@@ -420,8 +495,10 @@ export class Translator {
   private hqVoices: boolean = false
   private inputAudioTrack: MediaStreamTrack | null
   private metadata?: Record<string, any>
+  private enable_recording: boolean
 
   private callObject: DailyCall | null = null
+  private userTrack: MediaStreamTrack | null = null
   private translatedTrack: MediaStreamTrack | null = null
   private participantId = ''
   private translatorParticipantId = ''
@@ -429,6 +506,7 @@ export class Translator {
   private outputDeviceId: string | null = null
   private loggerCallback: ((log: DubitUserLog) => void) | null = null
 
+  private onUserTrackCallback: ((track: MediaStreamTrack) => void) | null = null
   private onTranslatedTrackCallback: ((track: MediaStreamTrack) => void) | null = null
   private onCaptionsCallback: ((caption: CaptionEvent) => void) | null = null
   private onNetworkQualityChangeCallback: ((event: NetworkStats) => void) | null = null
@@ -459,6 +537,7 @@ export class Translator {
     this.inputAudioTrack = params.inputAudioTrack
     this.metadata = params.metadata ? safeSerializeMetadata(params.metadata) : {}
     this.outputDeviceId = params.outputDeviceId
+    this.enable_recording = params.enable_recording || false;
     this.loggerCallback = params.loggerCallback || null
     if (params.onTranslatedTrackReady)
       this.onTranslatedTrackCallback = params.onTranslatedTrackReady
@@ -487,7 +566,7 @@ export class Translator {
   private _getTranslatorLabel(): string {
     let fromLangLabel = SUPPORTED_LANGUAGES.find((x) => x.langCode == this.fromLang)?.label
     let toLangLabel = SUPPORTED_LANGUAGES.find((x) => x.langCode == this.toLang)?.label
-    return `Translator ${fromLangLabel} -> ${toLangLabel}`
+    return `Translator ${fromLangLabel} -> ${toLangLabel} : ${this.participantId}`
   }
 
   public async init(): Promise<void> {
@@ -510,12 +589,23 @@ export class Translator {
     if (this.inputAudioTrack && this.inputAudioTrack.readyState === 'live') {
       audioSource = this.inputAudioTrack
     }
+
+    this.callObject.on('track-started', this.handleTrackStarted)
+    this.callObject.on('participant-joined', this.handleParticipantJoined)
+    this.callObject.on('app-message', this.handleAppMessage)
+    this.callObject.on('participant-left', this.handleParticipantLeft)
+    this.callObject.on('network-quality-change', this.handleNetworkQualityChange)
+
+    const userName = this.metadata['userName'] || 'Dubit User'
+
     try {
       this._log(DubitLogEvents.TRANSLATOR_JOINING_ROOM, {
         roomUrl: this.roomUrl,
         hasAudioSource: !!audioSource,
       })
+
       await this.callObject.join({
+        userName: userName,
         url: this.roomUrl,
         audioSource,
         videoSource: false,
@@ -529,6 +619,15 @@ export class Translator {
           },
         },
       })
+      
+      if(this.enable_recording) {
+        this.callObject.startRecording({
+          layout: {
+            preset: 'raw-tracks-audio-only',
+          },
+        });
+      }
+
     } catch (error) {
       const enhancedError = enhanceError('Failed to establish connection', error)
       this._log(DubitLogEvents.TRANSLATOR_JOIN_FAILED, { roomUrl: this.roomUrl }, enhancedError)
@@ -543,7 +642,7 @@ export class Translator {
       this._log(DubitLogEvents.TRANSLATOR_REGISTERING, {
         participantId: this.participantId,
       })
-      await this.registerParticipant(this.participantId)
+      await this.registerParticipant(this.participantId, userName)
     } catch (error: any) {
       await this.callObject?.leave()
       await this.callObject?.destroy()
@@ -579,11 +678,6 @@ export class Translator {
       throw error
     }
 
-    this.callObject.on('track-started', this.handleTrackStarted)
-    this.callObject.on('participant-joined', this.handleParticipantJoined)
-    this.callObject.on('app-message', this.handleAppMessage)
-    this.callObject.on('participant-left', this.handleParticipantLeft)
-    this.callObject.on('network-quality-change', this.handleNetworkQualityChange)
 
     this._log(DubitLogEvents.TRANSLATOR_INIT_COMPLETE, {
       fromLang: this.fromLang,
@@ -598,7 +692,8 @@ export class Translator {
       event.track &&
       event.track.kind === 'audio' &&
       !event?.participant?.local &&
-      event.participant.user_name.includes(this._getTranslatorLabel())
+      checkWord(event.participant.user_name, this._getTranslatorLabel())
+
     if (isValidTranslatorTrack) {
       this._log(
         DubitLogEvents.TRANSLATOR_TRACK_READY,
@@ -609,11 +704,10 @@ export class Translator {
         undefined,
         { fromLang: this.fromLang, toLang: this.toLang },
       )
-
+      this.translatedTrack = event.track;
       if (this.onTranslatedTrackCallback) {
         try {
           this.onTranslatedTrackCallback(event.track)
-          this.translatedTrack = event.track
         } catch (callbackError: any) {
           this._log(
             DubitLogEvents.INTERNAL_ERROR,
@@ -623,13 +717,29 @@ export class Translator {
         }
       }
     }
+
+    else if (event.track.kind === 'audio' && event.participant.local) {
+      this.userTrack = event.track;
+      if (this.onUserTrackCallback) {
+        try {
+          this.onUserTrackCallback(event.track)
+        } catch (callbackError: any) {
+          this._log(
+            DubitLogEvents.INTERNAL_ERROR,
+            { handler: 'onUserTrackCallback' },
+            enhanceError('Error in onUserTrackReady callback', callbackError),
+          )
+        }
+      }
+    }
   }
 
   private handleParticipantJoined = (event: DailyEventObjectParticipant) => {
     if (event?.participant?.local) return
 
-    if (event.participant.user_name.includes(this._getTranslatorLabel())) {
-      this.translatorParticipantId = event.participant.session_id
+
+    if (checkWord(event.participant.user_name, this._getTranslatorLabel())) {
+      this.translatorParticipantId = event.participant.session_id;
       this._log(DubitLogEvents.TRANSLATOR_PARTICIPANT_JOINED, {
         participantId: this.translatorParticipantId,
         participantName: event.participant.user_name,
@@ -663,7 +773,7 @@ export class Translator {
   private handleParticipantLeft = (event: DailyEventObjectParticipantLeft) => {
     if (
       !event.participant.local &&
-      event.participant.user_name.includes(this._getTranslatorLabel())
+      checkWord(event.participant.user_name, this._getTranslatorLabel())
     ) {
       this._log(DubitLogEvents.TRANSLATOR_PARTICIPANT_LEFT, {
         participantId: event.participant.session_id,
@@ -679,7 +789,7 @@ export class Translator {
     this.onNetworkQualityChangeCallback?.(event as NetworkStats)
   }
 
-  private async registerParticipant(participantId: string): Promise<void> {
+  private async registerParticipant(participantId: string, participantName?: string): Promise<void> {
     try {
       const response = await fetch(`${this.apiUrl}/participant`, {
         method: 'POST',
@@ -687,7 +797,7 @@ export class Translator {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.token}`,
         },
-        body: JSON.stringify({ id: participantId }),
+        body: JSON.stringify({ id: participantId, participant_name: participantName }),
       })
 
       let errorData: any = null
@@ -785,6 +895,28 @@ export class Translator {
         )
       }
       throw enhancedError
+    }
+  }
+
+
+  public onUserTrackReady(callback: (track: MediaStreamTrack) => void): void {
+    if (typeof callback !== 'function') {
+      this._log(DubitLogEvents.INTERNAL_ERROR, {
+        reason: 'Invalid callback provided to onUserTrackReady',
+      })
+      return
+    }
+    this.onUserTrackCallback = callback
+    if (this.userTrack) {
+      try {
+        callback(this.userTrack)
+      } catch (callbackError: any) {
+        this._log(
+          DubitLogEvents.INTERNAL_ERROR,
+          { handler: 'onUserTrackReadyImmediate' },
+          enhanceError('Error in onUserTrackReady callback (immediate invoke)', callbackError),
+        )
+      }
     }
   }
 
@@ -889,6 +1021,10 @@ export class Translator {
     return this.participantId
   }
 
+  public getTranslatorParticipantId(): string {
+    return this.translatorParticipantId
+  }
+
   public getTranslatedTrack(): MediaStreamTrack | null {
     return this.translatedTrack
   }
@@ -902,9 +1038,29 @@ export class Translator {
       return 0
     }
 
-    const remoteParticipantsAudioLevels = this.callObject.getRemoteParticipantsAudioLevel()
-
+    const remoteParticipantsAudioLevels = this.callObject.getRemoteParticipantsAudioLevel();
     return remoteParticipantsAudioLevels[this.translatorParticipantId] ?? 0
+  }
+
+  public startRemoteParticipantsAudioLevelObserver() {
+
+    if (!this.callObject) {
+      const error = new Error('Translator not initialized (callObject is null)')
+      this._log(DubitLogEvents.INTERNAL_ERROR, { reason: 'Not initialized' }, error)
+      throw error
+    }
+
+    this.callObject.startRemoteParticipantsAudioLevelObserver();
+
+  }
+
+  public stopRemoteParticipantsAudioLevelObserver() {
+    if (!this.callObject) {
+      const error = new Error('Translator not initialized (callObject is null)')
+      this._log(DubitLogEvents.INTERNAL_ERROR, { reason: 'Not initialized' }, error)
+      throw error
+    }
+    this.callObject.stopRemoteParticipantsAudioLevelObserver();
   }
 
   public async destroy(): Promise<void> {
@@ -974,13 +1130,18 @@ const activeRoutings = new Map()
  * This implementation avoids the WebRTC track mixing issue by using the WebAudio API
  */
 export function routeTrackToDevice(
-  track: MediaStreamTrack,
+  tracks: MediaStreamTrack[],
+  volumes: number[],  
   outputDeviceId: string,
-  elementId: string,
+  elementId?: string,
 ): object {
-  console.log(`Routing track ${track.id} to device ${outputDeviceId}`)
+
+  if (tracks.length !== volumes.length) {
+    throw new Error("`tracks` and `volumes` arrays must be the same length");
+  }
+
   if (!elementId) {
-    elementId = `audio-${track.id}`
+    elementId = `audio-${tracks.map((t) => t.id).join('-')}`;
   }
 
   // Clean up any existing routing for this element ID
@@ -1010,12 +1171,39 @@ export function routeTrackToDevice(
       .catch((err) => console.error(`Failed to resume AudioContext: ${err}`))
   }
 
-  const mediaStream = new MediaStream([track])
-  const sourceNode = audioContext.createMediaStreamSource(mediaStream)
-  console.log(`Created source node for track ${track.id}`)
-  const destinationNode = audioContext.destination
-  sourceNode.connect(destinationNode)
-  console.log(`Connected track ${track.id} to destination for device ${outputDeviceId}`)
+  const sourceNodes: MediaStreamAudioSourceNode[] = [];
+  const gainNodes: GainNode[] = [];
+  const pullElements: HTMLAudioElement[] = [];
+
+  
+  tracks.forEach((track, i) => {
+    const stream = new MediaStream([track]);
+
+    const source = audioContext.createMediaStreamSource(stream);
+    sourceNodes.push(source);
+
+    // c) Create & configure GainNode
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = volumes[i] / 100;
+    gainNodes.push(gainNode);
+
+    // d) Connect source → gain → destination
+    source.connect(gainNode).connect(audioContext.destination);
+
+    // e) Hidden <audio> to pull in WebRTC audio
+    const pullEl = document.createElement('audio');
+    pullEl.id = `pull-${elementId}-${i}`;
+    pullEl.srcObject = stream;
+    pullEl.style.display = 'none';
+    pullEl.muted = true;
+    document.body.appendChild(pullEl);
+    pullElements.push(pullEl);
+
+    pullEl.play()
+      .then(() => console.log(`Pull element started for track ${track.id}`))
+      .catch((err) => console.error(`Failed to start pull element: ${err}`));
+  });
+
 
   // If the AudioContext API supports setSinkId directly, use it
   if ('setSinkId' in AudioContext.prototype) {
@@ -1025,42 +1213,30 @@ export function routeTrackToDevice(
       .catch((err: DOMException) => console.error(`Failed to set sinkId on AudioContext: ${err}`))
   }
 
-  // Create a hidden audio element that will pull from the WebRTC stream
-  // This is necessary to get the WebRTC subsystem to deliver the audio to WebAudio
-  const pullElement = document.createElement('audio')
-  pullElement.id = `pull-${elementId}`
-  pullElement.srcObject = mediaStream
-  pullElement.style.display = 'none'
-  pullElement.muted = true // Don't actually play through the default device
-  document.body.appendChild(pullElement)
-
-  // Start pulling audio through the element
-  pullElement
-    .play()
-    .then(() => console.log(`Pull element started for track ${track.id}`))
-    .catch((err) => console.error(`Failed to start pull element: ${err}`))
-
-  // Create routing info object with stop method
+  
   const routingInfo = {
     context: audioContext,
-    sourceNode: sourceNode,
-    pullElement: pullElement,
-    stop: function () {
-      this.sourceNode.disconnect()
-      this.pullElement.pause()
-      this.pullElement.srcObject = null
-      if (this.pullElement.parentNode) {
-        document.body.removeChild(this.pullElement)
-      }
-
-      console.log(`Stopped routing track ${track.id} to device ${outputDeviceId}`)
+    sourceNodes,
+    gainNodes,
+    pullElements,
+    stop: function() {
+      // disconnect & remove elements
+      this.sourceNodes.forEach((src, idx) => {
+        src.disconnect();
+        const el = this.pullElements[idx];
+        el.pause();
+        el.srcObject = null;
+        if (el.parentNode) {
+          el.parentNode.removeChild(el);
+        }
+      });
+      console.log(`Stopped routing ${tracks.length} tracks to device ${outputDeviceId}`);
     },
-  }
+  };
 
-  // Store the routing for future cleanup
-  activeRoutings.set(elementId, routingInfo)
+  activeRoutings.set(elementId, routingInfo);
+  return routingInfo;
 
-  return routingInfo
 }
 
 function safeSerializeMetadata(metadata: Record<string, any>): Record<string, any> {
@@ -1116,199 +1292,71 @@ export const SUPPORTED_TRANSLATOR_VERSIONS: VersionType[] = [
 ]
 
 export const SUPPORTED_LANGUAGES: LanguageType[] = [
-  {
-    langCode: 'multi',
-    label: 'Multilingual',
-  },
-  {
-    langCode: 'bg',
-    label: 'Bulgarian',
-  },
-  {
-    langCode: 'ca',
-    label: 'Catalan',
-  },
-  {
-    langCode: 'zh-CN',
-    label: 'Chinese (Mainland China)',
-  },
-  {
-    langCode: 'zh-TW',
-    label: 'Chinese (Taiwan)',
-  },
-  {
-    langCode: 'zh-HK',
-    label: 'Chinese (Traditional, Hong Kong)',
-  },
-  {
-    langCode: 'cs',
-    label: 'Czech',
-  },
-  {
-    langCode: 'da',
-    label: 'Danish',
-  },
-  {
-    langCode: 'da-DK',
-    label: 'Danish',
-  },
-  {
-    langCode: 'nl',
-    label: 'Dutch',
-  },
-  {
-    langCode: 'en',
-    label: 'English',
-  },
-  {
-    langCode: 'en-US',
-    label: 'English (United States)',
-  },
-  {
-    langCode: 'en-AU',
-    label: 'English (Australia)',
-  },
-  {
-    langCode: 'en-GB',
-    label: 'English (United Kingdom)',
-  },
-  {
-    langCode: 'en-NZ',
-    label: 'English (New Zealand)',
-  },
-  {
-    langCode: 'en-IN',
-    label: 'English (India)',
-  },
-  {
-    langCode: 'et',
-    label: 'Estonian',
-  },
-  {
-    langCode: 'fi',
-    label: 'Finnish',
-  },
-  {
-    langCode: 'nl-BE',
-    label: 'Flemish',
-  },
-  {
-    langCode: 'fr',
-    label: 'French',
-  },
-  {
-    langCode: 'fr-CA',
-    label: 'French (Canada)',
-  },
-  {
-    langCode: 'de',
-    label: 'German',
-  },
-  {
-    langCode: 'de-CH',
-    label: 'German (Switzerland)',
-  },
-  {
-    langCode: 'el',
-    label: 'Greek',
-  },
-  {
-    langCode: 'hi',
-    label: 'Hindi',
-  },
-  {
-    langCode: 'hu',
-    label: 'Hungarian',
-  },
-  {
-    langCode: 'id',
-    label: 'Indonesian',
-  },
-  {
-    langCode: 'it',
-    label: 'Italian',
-  },
-  {
-    langCode: 'ja',
-    label: 'Japanese',
-  },
-  {
-    langCode: 'ko-KR',
-    label: 'Korean',
-  },
-  {
-    langCode: 'lv',
-    label: 'Latvian',
-  },
-  {
-    langCode: 'lt',
-    label: 'Lithuanian',
-  },
-  {
-    langCode: 'ms',
-    label: 'Malay',
-  },
-  {
-    langCode: 'no',
-    label: 'Norwegian',
-  },
-  {
-    langCode: 'pl',
-    label: 'Polish',
-  },
-  {
-    langCode: 'pt',
-    label: 'Portuguese',
-  },
-  {
-    langCode: 'pt-BR',
-    label: 'Portuguese (Brazil)',
-  },
-  {
-    langCode: 'pt-PT',
-    label: 'Portuguese (Portugal)',
-  },
-  {
-    langCode: 'ro',
-    label: 'Romanian',
-  },
-  {
-    langCode: 'ru',
-    label: 'Russian',
-  },
-  {
-    langCode: 'sk',
-    label: 'Slovak',
-  },
-  {
-    langCode: 'es',
-    label: 'Spanish',
-  },
-  {
-    langCode: 'es-419',
-    label: 'Spanish (Latin America & Caribbean)',
-  },
-  {
-    langCode: 'sv-SE',
-    label: 'Swedish (Sweden)',
-  },
-  {
-    langCode: 'th-TH',
-    label: 'Thai (Thailand)',
-  },
-  {
-    langCode: 'tr',
-    label: 'Turkish',
-  },
-  {
-    langCode: 'uk',
-    label: 'Ukrainian',
-  },
-  {
-    langCode: 'vi',
-    label: 'Vietnamese',
-  },
-]
+  { label: 'Multilingual (Spanish + English)', langCode: 'multi' },
+  { label: 'Bulgarian', langCode: 'bg' },
+  { label: 'Catalan', langCode: 'ca' },
+  { label: 'Chinese (China)', langCode: 'zh-CN' },
+  { label: 'Chinese (Taiwan)', langCode: 'zh-TW' },
+  { label: 'Chinese (Hong Kong SAR China)', langCode: 'zh-HK' },
+  { label: 'Czech', langCode: 'cs' },
+  { label: 'Danish', langCode: 'da' },
+  { label: 'Danish (Denmark)', langCode: 'da-DK' },
+  { label: 'Dutch', langCode: 'nl' },
+  { label: 'Dutch (Belgium)', langCode: 'nl-BE' },
+  { label: 'English', langCode: 'en' },
+  { label: 'English (United States)', langCode: 'en-US' },
+  { label: 'English (Australia)', langCode: 'en-AU' },
+  { label: 'English (United Kingdom)', langCode: 'en-GB' },
+  { label: 'English (New Zealand)', langCode: 'en-NZ' },
+  { label: 'English (India)', langCode: 'en-IN' },
+  { label: 'Estonian', langCode: 'et' },
+  { label: 'Finnish', langCode: 'fi' },
+  { label: 'French', langCode: 'fr' },
+  { label: 'French (Canada)', langCode: 'fr-CA' },
+  { label: 'German', langCode: 'de' },
+  { label: 'German (Switzerland)', langCode: 'de-CH' },
+  { label: 'Greek', langCode: 'el' },
+  { label: 'Hindi', langCode: 'hi' },
+  { label: 'Hungarian', langCode: 'hu' },
+  { label: 'Indonesian', langCode: 'id' },
+  { label: 'Italian', langCode: 'it' },
+  { label: 'Japanese', langCode: 'ja' },
+  { label: 'Korean (South Korea)', langCode: 'ko-KR' },
+  { label: 'Latvian', langCode: 'lv' },
+  { label: 'Lithuanian', langCode: 'lt' },
+  { label: 'Malay', langCode: 'ms' },
+  { label: 'Norwegian', langCode: 'no' },
+  { label: 'Polish', langCode: 'pl' },
+  { label: 'Portuguese', langCode: 'pt' },
+  { label: 'Portuguese (Brazil)', langCode: 'pt-BR' },
+  { label: 'Portuguese (Portugal)', langCode: 'pt-PT' },
+  { label: 'Romanian', langCode: 'ro' },
+  { label: 'Russian', langCode: 'ru' },
+  { label: 'Slovak', langCode: 'sk' },
+  { label: 'Spanish', langCode: 'es' },
+  { label: 'Spanish (Latin America)', langCode: 'es-419' },
+  { label: 'Swedish (Sweden)', langCode: 'sv-SE' },
+  { label: 'Thai (Thailand)', langCode: 'th-TH' },
+  { label: 'Turkish', langCode: 'tr' },
+  { label: 'Ukrainian', langCode: 'uk' },
+  { label: 'Vietnamese', langCode: 'vi' },
+  { label: 'Arabic (United Arab Emirates)', langCode: 'ar-AE' },
+  { label: 'Arabic (Bahrain)', langCode: 'ar-BH' },
+  { label: 'Arabic (Algeria)', langCode: 'ar-DZ' },
+  { label: 'Arabic (Egypt)', langCode: 'ar-EG' },
+  { label: 'Arabic (Iraq)', langCode: 'ar-IQ' },
+  { label: 'Arabic (Jordan)', langCode: 'ar-JO' },
+  { label: 'Arabic (Kuwait)', langCode: 'ar-KW' },
+  { label: 'Arabic (Lebanon)', langCode: 'ar-LB' },
+  { label: 'Arabic (Libya)', langCode: 'ar-LY' },
+  { label: 'Arabic (Morocco)', langCode: 'ar-MA' },
+  { label: 'Arabic (Oman)', langCode: 'ar-OM' },
+  { label: 'Arabic (Qatar)', langCode: 'ar-QA' },
+  { label: 'Arabic (Saudi Arabia)', langCode: 'ar-SA' },
+  { label: 'Arabic (Syria)', langCode: 'ar-SY' },
+  { label: 'Arabic (Tunisia)', langCode: 'ar-TN' },
+  { label: 'Arabic (Yemen)', langCode: 'ar-YE' }
+];
 
 export const DubitLogEvents = {
   // Instance Lifecycle

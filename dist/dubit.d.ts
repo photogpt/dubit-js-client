@@ -1,9 +1,12 @@
-import { DailyNetworkStats } from '@daily-co/daily-js';
+import { DailyEventObjectAppMessage, DailyEventObjectParticipant, DailyEventObjectParticipantLeft, DailyEventObjectRemoteParticipantsAudioLevel, DailyNetworkStats } from '@daily-co/daily-js';
+import EventEmitter from 'eventemitter3';
 export type CaptionEvent = {
     participant_id: string;
     timestamp: string;
     transcript: string;
     type: string;
+    from_lang: string;
+    to_lang: string;
 };
 /**
  * For now, only API_KEY is supported as a token.
@@ -26,6 +29,7 @@ export type TranslatorParams = {
     inputAudioTrack: MediaStreamTrack | null;
     metadata?: Record<string, any>;
     outputDeviceId?: string;
+    enable_recording: boolean;
     onTranslatedTrackReady?: (track: MediaStreamTrack) => void;
     onCaptions?: (caption: CaptionEvent) => void;
     onNetworkQualityChange?: (stats: NetworkStats) => void;
@@ -49,6 +53,18 @@ export interface DubitUserLog {
     internalData?: any;
     error?: Error;
 }
+interface DubitEventTypes {
+    'app-message': (e: DailyEventObjectAppMessage) => void;
+    'participant-joined': (e: DailyEventObjectParticipant) => void;
+    'participant-left': (e: DailyEventObjectParticipantLeft) => void;
+    'remote-participants-audio-level': (e: DailyEventObjectRemoteParticipantsAudioLevel) => void;
+}
+export declare class DubitEventEmitter extends EventEmitter<DubitEventTypes> {
+}
+export declare function listenEvents(url: string): Promise<{
+    dubitEmitter: DubitEventEmitter;
+    leaveCall: () => void;
+}>;
 export declare function createNewInstance({ token, apiUrl, loggerCallback, }: DubitCreateParams): Promise<DubitInstance>;
 export declare function getSupportedLanguages(): LanguageType[];
 export declare function validateApiKey(apiKey: string): Promise<boolean>;
@@ -85,12 +101,15 @@ export declare class Translator {
     private hqVoices;
     private inputAudioTrack;
     private metadata?;
+    private enable_recording;
     private callObject;
+    private userTrack;
     private translatedTrack;
     private participantId;
     private translatorParticipantId;
     private outputDeviceId;
     private loggerCallback;
+    private onUserTrackCallback;
     private onTranslatedTrackCallback;
     private onCaptionsCallback;
     private onNetworkQualityChangeCallback;
@@ -113,20 +132,24 @@ export declare class Translator {
     private handleNetworkQualityChange;
     private registerParticipant;
     private addTranslationBot;
+    onUserTrackReady(callback: (track: MediaStreamTrack) => void): void;
     onTranslatedTrackReady(callback: (translatedTrack: MediaStreamTrack) => void): void;
     onCaptions(callback: (caption: CaptionEvent) => void): void;
     updateInputTrack(newInputTrack: MediaStreamTrack | null): Promise<void>;
     getParticipantId(): string;
+    getTranslatorParticipantId(): string;
     getTranslatedTrack(): MediaStreamTrack | null;
     getNetworkStats(): Promise<NetworkStats>;
     getTranslatorVolumeLevel(): number;
+    startRemoteParticipantsAudioLevelObserver(): void;
+    stopRemoteParticipantsAudioLevelObserver(): void;
     destroy(): Promise<void>;
 }
 /**
  * Routes a WebRTC audio track to a specific output device using WebAudio
  * This implementation avoids the WebRTC track mixing issue by using the WebAudio API
  */
-export declare function routeTrackToDevice(track: MediaStreamTrack, outputDeviceId: string, elementId: string): object;
+export declare function routeTrackToDevice(tracks: MediaStreamTrack[], volumes: number[], outputDeviceId: string, elementId?: string): object;
 /**
  * Represents a version object with a version string and a label.
  *
